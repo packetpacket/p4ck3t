@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>Sistem Paket</title>
+  
+  <!-- Memanggil desain Bootstrap agar tampilan rapi di HP -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Memanggil Library Live Scanner Barcode -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  
+  <style>
+    body { background-color: #f0f2f5; padding: 15px; font-family: sans-serif; }
+    .card { max-width: 480px; margin: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; background: white;}
+    .nav-pills .nav-link { font-weight: bold; color: #5f6368; border-radius: 8px; cursor: pointer; }
+    .nav-pills .nav-link.active { background-color: #1a73e8; color: white; }
+    .required-star { color: red; }
+    /* Mempercantik area scanner */
+    #reader { width: 100%; display: none; border-radius: 10px; margin-bottom: 15px; overflow: hidden; border: 2px solid #1a73e8; }
+  </style>
+</head>
+<body>
+
+<div class="card p-4">
+  <!-- Menu Navigasi Tabs -->
+  <ul class="nav nav-pills nav-fill mb-4" id="pills-tab">
+    <li class="nav-item">
+      <button class="nav-link active" id="tab-masuk" onclick="gantiTab('masuk')">📦 Paket Masuk</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="tab-keluar" onclick="gantiTab('keluar')">📤 Paket Keluar</button>
+    </li>
+  </ul>
+
+  <!-- ================= FORM PAKET MASUK ================= -->
+  <div id="form-masuk-container">
+    
+    <div id="reader"></div>
+    <button type="button" id="btnScanCamera" class="btn btn-dark w-100 mb-4 py-2 fw-bold" onclick="toggleScanner()">
+      📷 Buka Live Scanner
+    </button>
+
+    <form id="formMasuk" onsubmit="event.preventDefault(); kirimData('masuk');">
+      <div class="mb-3">
+        <label class="form-label">Nomor Resi <span class="required-star">*</span></label>
+        <input type="text" id="resi" name="resi" class="form-control form-control-lg" placeholder="Arahkan kamera ke barcode..." required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Alamat / Nama</label>
+        <input type="text" id="alamatMasuk" name="alamatMasuk" class="form-control">
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Jumlah</label>
+        <div class="input-group">
+          <button type="button" class="btn btn-outline-secondary px-3" onclick="step('jumlahMasuk', -1, 1)">-</button>
+          <input type="number" id="jumlahMasuk" name="jumlahMasuk" class="form-control text-center bg-white" value="1" min="1" required>
+          <button type="button" class="btn btn-outline-secondary px-3" onclick="step('jumlahMasuk', 1, 1)">+</button>
+        </div>
+      </div>
+      <button type="submit" id="btnSubmitMasuk" class="btn btn-primary w-100 py-2 fw-bold">Save Data Masuk</button>
+    </form>
+  </div>
+
+  <!-- ================= FORM PAKET KELUAR ================= -->
+  <div id="form-keluar-container" style="display: none;">
+    <form id="formKeluar" onsubmit="event.preventDefault(); kirimData('keluar');">
+      <div class="mb-3">
+        <label class="form-label">Pemilik Paket <span class="required-star">*</span></label>
+        <input type="text" id="pemilik" name="pemilik" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Alamat</label>
+        <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Pengambil <span class="required-star">*</span></label>
+        <input type="text" id="pengambil" name="pengambil" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">No. Tlp</label>
+        <input type="tel" id="notlp" name="notlp" class="form-control">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Jumlah FnB</label>
+        <div class="input-group">
+          <button type="button" class="btn btn-outline-secondary px-3" onclick="step('jumlahFnb', -1, 0)">-</button>
+          <input type="number" id="jumlahFnb" name="jumlahFnb" class="form-control text-center bg-white" value="0" min="0">
+          <button type="button" class="btn btn-outline-secondary px-3" onclick="step('jumlahFnb', 1, 0)">+</button>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Jumlah Paket</label>
+        <div class="input-group">
+          <button type="button" class="btn btn-outline-secondary px-3" onclick="step('jumlahPaket', -1, 0)">-</button>
+          <input type="number" id="jumlahPaket" name="jumlahPaket" class="form-control text-center bg-white" value="0" min="0">
+          <button type="button" class="btn btn-outline-secondary px-3" onclick="step('jumlahPaket', 1, 0)">+</button>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Disposal</label>
+        <input type="text" id="disposal" name="disposal" class="form-control">
+      </div>
+      <button type="submit" id="btnSubmitKeluar" class="btn btn-secondary w-100 py-2 fw-bold" style="background-color: #5f6368;">Save Data Keluar</button>
+    </form>
+  </div>
+
+  <!-- Status Message -->
+  <div id="status" class="mt-4 text-center fw-bold"></div>
+</div>
+
+<script>
+  // =========================================================================
+  // WAJIB GANTI: Taruh URL Web App Google Apps Script Anda di antara tanda kutip di bawah ini!
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykEPWSKCuyU3I6_Z3x_eFMImOTVuL3YC8zIL6TkE6q9BjOhTLwvpAtaKYggeW2ijCfeg/exec";
+  // =========================================================================
+
+  // Logika Pindah Tab
+  function gantiTab(tab) {
+    document.getElementById('form-masuk-container').style.display = (tab === 'masuk') ? 'block' : 'none';
+    document.getElementById('form-keluar-container').style.display = (tab === 'keluar') ? 'block' : 'none';
+    document.getElementById('tab-masuk').className = (tab === 'masuk') ? 'nav-link active' : 'nav-link';
+    document.getElementById('tab-keluar').className = (tab === 'keluar') ? 'nav-link active' : 'nav-link';
+    document.getElementById('status').innerHTML = ""; 
+    
+    // Matikan kamera otomatis jika pindah ke tab keluar
+    if(tab === 'keluar' && isScanning) toggleScanner();
+  }
+
+  // Logika Live Scanner
+  let html5QrcodeScanner;
+  let isScanning = false;
+
+  function toggleScanner() {
+    const readerDiv = document.getElementById('reader');
+    const btnScan = document.getElementById('btnScanCamera');
+    
+    if (!isScanning) {
+      readerDiv.style.display = 'block';
+      btnScan.innerHTML = '❌ Matikan Kamera';
+      btnScan.classList.replace('btn-dark', 'btn-danger');
+      
+      // Konfigurasi Live Scanner (fps 15 agar mulus)
+      html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: {width: 250, height: 100}, aspectRatio: 1.0 }, false);
+      html5QrcodeScanner.render(
+        (decodedText) => {
+          document.getElementById('resi').value = decodedText;
+          if('vibrate' in navigator) navigator.vibrate(200); // HP Getar
+          toggleScanner(); // Matikan kamera setelah berhasil
+        }, 
+        (error) => {} // Abaikan error saat mencari fokus
+      );
+      isScanning = true;
+    } else {
+      html5QrcodeScanner.clear().then(() => {
+        readerDiv.style.display = 'none';
+        btnScan.innerHTML = '📷 Buka Live Scanner';
+        btnScan.classList.replace('btn-danger', 'btn-dark');
+        isScanning = false;
+      });
+    }
+  }
+
+  // Logika Tombol Plus Minus
+  function step(id, val, minVal) {
+    let input = document.getElementById(id);
+    let n = parseInt(input.value) || 0;
+    if (n + val >= minVal) input.value = n + val;
+  }
+
+  // Logika Kirim Data ke Google Script
+  function kirimData(tipe) {
+    const formId = tipe === 'masuk' ? 'formMasuk' : 'formKeluar';
+    const btnId = tipe === 'masuk' ? 'btnSubmitMasuk' : 'btnSubmitKeluar';
+    const btn = document.getElementById(btnId);
+    const status = document.getElementById('status');
+    const formElement = document.getElementById(formId);
+    
+    btn.disabled = true; 
+    btn.innerText = 'Menyimpan...';
+
+    // Bungkus semua data form
+    let formData = new FormData(formElement);
+    formData.append("formType", tipe);
+
+    // Kirim menggunakan metode Fetch API
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: formData,
+      redirect: 'follow' 
+    })
+    .then(response => response.text())
+    .then(result => {
+      status.innerHTML = `<span class="text-success">✅ ${result}</span>`;
+      formElement.reset();
+      
+      // Kembalikan angka default
+      if (tipe === 'masuk') document.getElementById('jumlahMasuk').value = 1;
+      if (tipe === 'keluar') {
+        document.getElementById('jumlahFnb').value = 0;
+        document.getElementById('jumlahPaket').value = 0;
+      }
+      
+      btn.disabled = false; 
+      btn.innerText = tipe === 'masuk' ? 'Save Data Masuk' : 'Save Data Keluar';
+      window.scrollTo(0, 0); 
+      setTimeout(() => status.innerHTML = "", 4000); // Hilangkan pesan setelah 4 detik
+    })
+    .catch(error => {
+      status.innerHTML = `<span class="text-danger">❌ Error: Gagal menyimpan data, periksa koneksi internet.</span>`;
+      btn.disabled = false; 
+      btn.innerText = tipe === 'masuk' ? 'Save Data Masuk' : 'Save Data Keluar';
+    });
+  }
+</script>
+</body>
+</html>
