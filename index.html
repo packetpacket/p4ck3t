@@ -68,7 +68,7 @@
             <input type="text" id="pemilik" name="pemilik" class="form-control mb-2" placeholder="Pemilik Paket" required>
             <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control mb-2" placeholder="Alamat">
             <input type="text" id="pengambil" name="pengambil" class="form-control mb-2" placeholder="Nama Pengambil" required>
-            <input type="text" id="notlp" name="notlp" class="form-control mb-2" placeholder="No Tlp">
+            <input type="text" id="notlp" name="notlp" class="form-control mb-2" placeholder="No Tlp" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
             <div class="row mb-3">
                 <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="FnB"></div>
                 <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Paket"></div>
