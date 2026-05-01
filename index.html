@@ -7,13 +7,12 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { background-color: #f8f9fa; padding: 10px; font-size: 14px; }
+    body { background-color: #f8f9fa; padding: 10px; font-size: 13px; }
     .card { max-width: 700px; margin: auto; border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     .nav-pills .nav-link { border-radius: 10px; font-weight: bold; }
     #reader { width: 100%; display: none; border-radius: 10px; border: 2px solid #0d6efd; margin-bottom: 10px; }
-    .table-responsive { max-height: 400px; overflow-y: auto; }
-    .btn-delete { color: #dc3545; cursor: pointer; }
-    .btn-delete:hover { color: #a71d2a; }
+    .table-responsive { max-height: 500px; overflow-y: auto; }
+    .action-btn { cursor: pointer; padding: 0 5px; font-size: 16px; }
   </style>
 </head>
 <body>
@@ -26,38 +25,43 @@
 
   <button id="btnTambah" class="btn btn-primary w-100 mb-3 fw-bold" onclick="showForm()">➕ Tambah Data</button>
 
-  <!-- FORM CONTAINER -->
-  <div id="form-container" style="display:none;" class="border p-3 rounded mb-3 bg-white">
+  <div id="form-container" style="display:none;" class="border p-3 rounded mb-3 bg-white shadow-sm">
+    <h6 id="formTitle" class="fw-bold mb-3 text-primary">Tambah Data</h6>
     <div id="area-masuk">
       <div id="reader"></div>
       <button class="btn btn-dark btn-sm w-100 mb-2" onclick="toggleScanner()">📷 Scan Barcode</button>
       <form id="formMasuk" onsubmit="event.preventDefault(); kirimData('masuk');">
+        <input type="hidden" name="rowId" id="rowMasuk">
         <input type="text" id="resi" name="resi" class="form-control mb-2" placeholder="Nomor Resi" required>
-        <input type="text" name="alamatMasuk" class="form-control mb-2" placeholder="Nama / Alamat">
-        <input type="number" name="jumlahMasuk" class="form-control mb-3" value="1">
-        <button type="submit" class="btn btn-primary w-100">Simpan Paket Masuk</button>
+        <input type="text" id="alamatMasuk" name="alamatMasuk" class="form-control mb-2" placeholder="Nama / Alamat">
+        <input type="number" id="jumlahMasuk" name="jumlahMasuk" class="form-control mb-3" value="1">
+        <button type="submit" id="btnSaveMasuk" class="btn btn-primary w-100">Simpan Paket Masuk</button>
       </form>
     </div>
 
     <div id="area-keluar" style="display:none;">
       <form id="formKeluar" onsubmit="event.preventDefault(); kirimData('keluar');">
-        <input type="text" name="pemilik" class="form-control mb-2" placeholder="Pemilik Paket" required>
-        <input type="text" name="pengambil" class="form-control mb-2" placeholder="Nama Pengambil" required>
-        <div class="row mb-3"><div class="col"><input type="number" name="jumlahFnb" class="form-control" placeholder="FnB"></div><div class="col"><input type="number" name="jumlahPaket" class="form-control" placeholder="Paket"></div></div>
-        <button type="submit" class="btn btn-primary w-100">Simpan Paket Keluar</button>
+        <input type="hidden" name="rowId" id="rowKeluar">
+        <input type="text" id="pemilik" name="pemilik" class="form-control mb-2" placeholder="Pemilik Paket" required>
+        <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control mb-2" placeholder="Alamat">
+        <input type="text" id="pengambil" name="pengambil" class="form-control mb-2" placeholder="Nama Pengambil" required>
+        <input type="text" id="notlp" name="notlp" class="form-control mb-2" placeholder="No Tlp">
+        <div class="row mb-3">
+            <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="FnB"></div>
+            <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Paket"></div>
+        </div>
+        <input type="text" id="disposal" name="disposal" class="form-control mb-3" placeholder="Disposal">
+        <button type="submit" id="btnSaveKeluar" class="btn btn-primary w-100">Simpan Paket Keluar</button>
       </form>
     </div>
     <button class="btn btn-link btn-sm w-100 text-muted" onclick="hideForm()">Batal</button>
   </div>
 
-  <!-- TABEL DATA -->
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h6 class="fw-bold mb-0">Riwayat Data</h6>
     <button class="btn btn-sm btn-outline-secondary" onclick="muatData()">🔄 Refresh</button>
   </div>
-  
   <div id="loading" class="text-center my-3" style="display:none;">Memuat data...</div>
-  
   <div class="table-responsive">
     <table class="table table-hover table-sm">
       <thead class="table-light" id="th"></thead>
@@ -69,6 +73,7 @@
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykEPWSKCuyU3I6_Z3x_eFMImOTVuL3YC8zIL6TkE6q9BjOhTLwvpAtaKYggeW2ijCfeg/exec";
   let mode = 'masuk';
+  let listData = [];
 
   function gantiTab(t) {
     mode = t;
@@ -79,45 +84,77 @@
     hideForm(); muatData();
   }
 
-  function showForm() { document.getElementById('form-container').style.display = 'block'; document.getElementById('btnTambah').style.display = 'none'; }
-  function hideForm() { document.getElementById('form-container').style.display = 'none'; document.getElementById('btnTambah').style.display = 'block'; }
+  function showForm(edit = false) {
+    document.getElementById('form-container').style.display = 'block';
+    document.getElementById('btnTambah').style.display = 'none';
+    document.getElementById('formTitle').innerText = edit ? "Edit Data" : "Tambah Data Baru";
+  }
+
+  function hideForm() {
+    document.getElementById('form-container').style.display = 'none';
+    document.getElementById('btnTambah').style.display = 'block';
+    document.getElementById('formMasuk').reset();
+    document.getElementById('formKeluar').reset();
+    document.getElementById('rowMasuk').value = '';
+    document.getElementById('rowKeluar').value = '';
+  }
 
   async function muatData() {
     document.getElementById('loading').style.display = 'block';
     try {
       const r = await fetch(`${SCRIPT_URL}?type=${mode}`);
-      const d = await r.json();
-      
+      listData = await r.json();
       let h = mode === 'masuk' ? '<tr><th>Resi</th><th>Nama</th><th>Aksi</th></tr>' : '<tr><th>Pemilik</th><th>Ambil</th><th>Aksi</th></tr>';
       document.getElementById('th').innerHTML = h;
-
       let b = '';
-      // Mulai dari index 1 untuk melewati Header Spreadsheet
-      for (let i = 1; i < d.length; i++) {
-        let rowNum = i + 1; // Lokasi baris asli di Google Sheets
+      for (let i = listData.length - 1; i >= 1; i--) {
         b += `<tr>
-                <td>${d[i][0]}</td>
-                <td>${mode === 'masuk' ? d[i][1] : d[i][2]}</td>
-                <td><span class="btn-delete fw-bold" onclick="hapusData(${rowNum})">🗑️</span></td>
+                <td>${listData[i][0]}</td>
+                <td>${mode === 'masuk' ? listData[i][1] : listData[i][2]}</td>
+                <td>
+                    <span class="action-btn text-warning" onclick="editData(${i})">📝</span>
+                    <span class="action-btn text-danger" onclick="hapusData(${i+1})">🗑️</span>
+                </td>
               </tr>`;
       }
       document.getElementById('tb').innerHTML = b;
-    } catch (e) { alert("Gagal memuat data"); }
+    } catch (e) { console.log(e); }
     document.getElementById('loading').style.display = 'none';
   }
 
+  function editData(idx) {
+    const row = listData[idx];
+    showForm(true);
+    if (mode === 'masuk') {
+        document.getElementById('rowMasuk').value = idx + 1;
+        document.getElementById('resi').value = row[0];
+        document.getElementById('alamatMasuk').value = row[1];
+        document.getElementById('jumlahMasuk').value = row[2];
+    } else {
+        document.getElementById('rowKeluar').value = idx + 1;
+        document.getElementById('pemilik').value = row[0];
+        document.getElementById('alamatKeluar').value = row[1];
+        document.getElementById('pengambil').value = row[2];
+        document.getElementById('notlp').value = row[3];
+        document.getElementById('fnb').value = row[4];
+        document.getElementById('paket').value = row[5];
+        document.getElementById('disposal').value = row[6];
+    }
+  }
+
   async function hapusData(num) {
-    if(!confirm("Hapus baris ini dari Spreadsheet?")) return;
-    try {
-      await fetch(`${SCRIPT_URL}?action=delete&type=${mode}&row=${num}`, { mode: 'no-cors' });
-      alert("Permintaan hapus terkirim. Data akan hilang setelah refresh.");
-      muatData();
-    } catch(e) { alert("Gagal menghapus"); }
+    if(!confirm("Hapus baris ini?")) return;
+    fetch(`${SCRIPT_URL}?action=delete&type=${mode}&row=${num}`, { mode: 'no-cors' }).then(() => muatData());
   }
 
   function kirimData(t) {
     const f = document.getElementById(t === 'masuk' ? 'formMasuk' : 'formKeluar');
-    let fd = new FormData(f); fd.append("formType", t);
+    const rowId = document.getElementById(t === 'masuk' ? 'rowMasuk' : 'rowKeluar').value;
+    let fd = new FormData(f);
+    fd.append("formType", t);
+    if(rowId) fd.append("action", "edit");
+    if(rowId) fd.append("row", rowId);
+
     fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' }).then(() => {
       f.reset(); hideForm(); muatData();
     });
@@ -134,7 +171,6 @@
       scanner.clear().then(() => { document.getElementById('reader').style.display = 'none'; isScanning = false; });
     }
   }
-
   window.onload = muatData;
 </script>
 </body>
