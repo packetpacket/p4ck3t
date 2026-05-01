@@ -8,6 +8,11 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { background-color: #f8f9fa; padding: 10px; font-size: 13px; }
+    /* Layar Login */
+    #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .login-card { width: 100%; max-width: 350px; padding: 20px; text-align: center; }
+    /* Aplikasi Utama */
+    #main-app { display: none; }
     .card { max-width: 700px; margin: auto; border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     .nav-pills .nav-link { border-radius: 10px; font-weight: bold; }
     #reader { width: 100%; display: none; border-radius: 10px; border: 2px solid #0d6efd; margin-bottom: 10px; }
@@ -17,61 +22,120 @@
 </head>
 <body>
 
-<div class="card p-3">
-  <ul class="nav nav-pills nav-fill mb-3">
-    <li class="nav-item"><button class="nav-link active" id="btnTabMasuk" onclick="gantiTab('masuk')">📦 Masuk</button></li>
-    <li class="nav-item"><button class="nav-link" id="btnTabKeluar" onclick="gantiTab('keluar')">📤 Keluar</button></li>
-  </ul>
+<!-- LAYAR LOGIN -->
+<div id="login-screen">
+  <div class="login-card shadow rounded p-4">
+    <h4 class="fw-bold mb-4">🔐 Login Sistem</h4>
+    <div id="login-error" class="text-danger small mb-3"></div>
+    <input type="text" id="username" class="form-control mb-3" placeholder="Username">
+    <input type="password" id="password" class="form-control mb-4" placeholder="Password">
+    <button class="btn btn-primary w-100 fw-bold" onclick="handleLogin()">Masuk</button>
+  </div>
+</div>
 
-  <button id="btnTambah" class="btn btn-primary w-100 mb-3 fw-bold" onclick="showForm()">➕ Tambah Data</button>
-
-  <div id="form-container" style="display:none;" class="border p-3 rounded mb-3 bg-white shadow-sm">
-    <h6 id="formTitle" class="fw-bold mb-3 text-primary">Tambah Data</h6>
-    <div id="area-masuk">
-      <div id="reader"></div>
-      <button class="btn btn-dark btn-sm w-100 mb-2" onclick="toggleScanner()">📷 Scan Barcode</button>
-      <form id="formMasuk" onsubmit="event.preventDefault(); kirimData('masuk');">
-        <input type="hidden" name="rowId" id="rowMasuk">
-        <input type="text" id="resi" name="resi" class="form-control mb-2" placeholder="Nomor Resi" required>
-        <input type="text" id="alamatMasuk" name="alamatMasuk" class="form-control mb-2" placeholder="Nama / Alamat">
-        <input type="number" id="jumlahMasuk" name="jumlahMasuk" class="form-control mb-3" value="1">
-        <button type="submit" id="btnSaveMasuk" class="btn btn-primary w-100">Simpan Paket Masuk</button>
-      </form>
-    </div>
-
-    <div id="area-keluar" style="display:none;">
-      <form id="formKeluar" onsubmit="event.preventDefault(); kirimData('keluar');">
-        <input type="hidden" name="rowId" id="rowKeluar">
-        <input type="text" id="pemilik" name="pemilik" class="form-control mb-2" placeholder="Pemilik Paket" required>
-        <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control mb-2" placeholder="Alamat">
-        <input type="text" id="pengambil" name="pengambil" class="form-control mb-2" placeholder="Nama Pengambil" required>
-        <input type="text" id="notlp" name="notlp" class="form-control mb-2" placeholder="No Tlp">
-        <div class="row mb-3">
-            <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="FnB"></div>
-            <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Paket"></div>
+<!-- APLIKASI UTAMA (Tersembunyi Sebelum Login) -->
+<div id="main-app">
+    <div class="card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+          <small class="text-muted">Halo, <b id="user-display">User</b></small>
+          <button class="btn btn-sm btn-link text-danger" onclick="handleLogout()">Keluar</button>
+      </div>
+      
+      <ul class="nav nav-pills nav-fill mb-3">
+        <li class="nav-item"><button class="nav-link active" id="btnTabMasuk" onclick="gantiTab('masuk')">📦 Masuk</button></li>
+        <li class="nav-item"><button class="nav-link" id="btnTabKeluar" onclick="gantiTab('keluar')">📤 Keluar</button></li>
+      </ul>
+    
+      <button id="btnTambah" class="btn btn-primary w-100 mb-3 fw-bold" onclick="showForm()">➕ Tambah Data</button>
+    
+      <div id="form-container" style="display:none;" class="border p-3 rounded mb-3 bg-white shadow-sm">
+        <h6 id="formTitle" class="fw-bold mb-3 text-primary">Tambah Data</h6>
+        <div id="area-masuk">
+          <div id="reader"></div>
+          <button class="btn btn-dark btn-sm w-100 mb-2" onclick="toggleScanner()">📷 Scan Barcode</button>
+          <form id="formMasuk" onsubmit="event.preventDefault(); kirimData('masuk');">
+            <input type="hidden" name="rowId" id="rowMasuk">
+            <input type="text" id="resi" name="resi" class="form-control mb-2" placeholder="Nomor Resi" required>
+            <input type="text" id="alamatMasuk" name="alamatMasuk" class="form-control mb-2" placeholder="Nama / Alamat">
+            <input type="number" id="jumlahMasuk" name="jumlahMasuk" class="form-control mb-3" value="1">
+            <button type="submit" id="btnSaveMasuk" class="btn btn-primary w-100">Simpan Paket Masuk</button>
+          </form>
         </div>
-        <input type="text" id="disposal" name="disposal" class="form-control mb-3" placeholder="Disposal">
-        <button type="submit" id="btnSaveKeluar" class="btn btn-primary w-100">Simpan Paket Keluar</button>
-      </form>
+    
+        <div id="area-keluar" style="display:none;">
+          <form id="formKeluar" onsubmit="event.preventDefault(); kirimData('keluar');">
+            <input type="hidden" name="rowId" id="rowKeluar">
+            <input type="text" id="pemilik" name="pemilik" class="form-control mb-2" placeholder="Pemilik Paket" required>
+            <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control mb-2" placeholder="Alamat">
+            <input type="text" id="pengambil" name="pengambil" class="form-control mb-2" placeholder="Nama Pengambil" required>
+            <input type="text" id="notlp" name="notlp" class="form-control mb-2" placeholder="No Tlp">
+            <div class="row mb-3">
+                <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="FnB"></div>
+                <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Paket"></div>
+            </div>
+            <input type="text" id="disposal" name="disposal" class="form-control mb-3" placeholder="Disposal">
+            <button type="submit" id="btnSaveKeluar" class="btn btn-primary w-100">Simpan Paket Keluar</button>
+          </form>
+        </div>
+        <button class="btn btn-link btn-sm w-100 text-muted" onclick="hideForm()">Batal</button>
+      </div>
+    
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold mb-0">Riwayat Data</h6>
+        <button class="btn btn-sm btn-outline-secondary" onclick="muatData()">🔄 Refresh</button>
+      </div>
+      <div id="loading" class="text-center my-3" style="display:none;">Memuat data...</div>
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead class="table-light" id="th"></thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
     </div>
-    <button class="btn btn-link btn-sm w-100 text-muted" onclick="hideForm()">Batal</button>
-  </div>
-
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <h6 class="fw-bold mb-0">Riwayat Data</h6>
-    <button class="btn btn-sm btn-outline-secondary" onclick="muatData()">🔄 Refresh</button>
-  </div>
-  <div id="loading" class="text-center my-3" style="display:none;">Memuat data...</div>
-  <div class="table-responsive">
-    <table class="table table-hover table-sm">
-      <thead class="table-light" id="th"></thead>
-      <tbody id="tb"></tbody>
-    </table>
-  </div>
 </div>
 
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykEPWSKCuyU3I6_Z3x_eFMImOTVuL3YC8zIL6TkE6q9BjOhTLwvpAtaKYggeW2ijCfeg/exec";
+  
+  // ==========================================
+  // CONFIG LOGIN (SILAKAN GANTI DI SINI)
+  // ==========================================
+  const AUTH_USERNAME = "P0sP4ck3t"; 
+  const AUTH_PASSWORD = "4Cen6g0nd0k@"; 
+  // ==========================================
+
+  function handleLogin() {
+    const user = document.getElementById('username').value;
+    const pass = document.getElementById('password').value;
+    const error = document.getElementById('login-error');
+
+    if (user === AUTH_USERNAME && pass === AUTH_PASSWORD) {
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('username', user);
+        checkAuth();
+    } else {
+        error.innerText = "Username atau Password salah!";
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('isLoggedIn');
+    location.reload();
+  }
+
+  function checkAuth() {
+    if (localStorage.getItem('isLoggedIn') === 'true') {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+        document.getElementById('user-display').innerText = localStorage.getItem('username');
+        muatData();
+    }
+  }
+
+  // Cek login setiap kali halaman dibuka
+  window.onload = checkAuth;
+
+  // --- LOGIKA APLIKASI (Sama seperti sebelumnya) ---
   let mode = 'masuk';
   let listData = [];
 
@@ -100,6 +164,7 @@
   }
 
   async function muatData() {
+    if(localStorage.getItem('isLoggedIn') !== 'true') return;
     document.getElementById('loading').style.display = 'block';
     try {
       const r = await fetch(`${SCRIPT_URL}?type=${mode}`);
@@ -152,8 +217,7 @@
     const rowId = document.getElementById(t === 'masuk' ? 'rowMasuk' : 'rowKeluar').value;
     let fd = new FormData(f);
     fd.append("formType", t);
-    if(rowId) fd.append("action", "edit");
-    if(rowId) fd.append("row", rowId);
+    if(rowId) { fd.append("action", "edit"); fd.append("row", rowId); }
 
     fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' }).then(() => {
       f.reset(); hideForm(); muatData();
@@ -171,7 +235,6 @@
       scanner.clear().then(() => { document.getElementById('reader').style.display = 'none'; isScanning = false; });
     }
   }
-  window.onload = muatData;
 </script>
 </body>
 </html>
