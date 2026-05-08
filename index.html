@@ -18,11 +18,13 @@
     #reader { width: 100%; display: none; border-radius: 10px; border: 2px solid #0d6efd; margin-bottom: 10px; }
     .table-responsive { max-height: 500px; overflow-y: auto; }
     .action-btn { cursor: pointer; padding: 0 5px; font-size: 16px; }
+    
+    /* Animasi input autofill */
+    #notlp { transition: background-color 0.3s; }
   </style>
 </head>
 <body>
 
-<!-- LAYAR LOGIN -->
 <div id="login-screen">
   <div class="login-card shadow rounded p-4">
     <h4 class="fw-bold mb-4">🔐 Login Sistem</h4>
@@ -33,7 +35,6 @@
   </div>
 </div>
 
-<!-- APLIKASI UTAMA (Tersembunyi Sebelum Login) -->
 <div id="main-app">
     <div class="card p-3">
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -50,6 +51,7 @@
     
       <div id="form-container" style="display:none;" class="border p-3 rounded mb-3 bg-white shadow-sm">
         <h6 id="formTitle" class="fw-bold mb-3 text-primary">Tambah Data</h6>
+        
         <div id="area-masuk">
           <div id="reader"></div>
           <button class="btn btn-dark btn-sm w-100 mb-2" onclick="toggleScanner()">📷 Scan Barcode</button>
@@ -67,8 +69,9 @@
             <input type="hidden" name="rowId" id="rowKeluar">
             <input type="text" id="pemilik" name="pemilik" class="form-control mb-2" placeholder="Pemilik Paket" required>
             <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control mb-2" placeholder="Alamat">
-            <input type="text" id="pengambil" name="pengambil" class="form-control mb-2" placeholder="Nama Pengambil" required>
-            <input type="text" id="notlp" name="notlp" class="form-control mb-2" placeholder="No Tlp" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+            
+            <input type="text" id="pengambil" name="pengambil" class="form-control mb-2" placeholder="Nama Pengambil" list="listNama" oninput="cekDanIsiOtomatis()" required>
+            <datalist id="listNama"></datalist> <input type="text" id="notlp" name="notlp" class="form-control mb-2" placeholder="No Tlp" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
             <div class="row mb-3">
                 <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="FnB"></div>
                 <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Paket"></div>
@@ -98,11 +101,14 @@
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykEPWSKCuyU3I6_Z3x_eFMImOTVuL3YC8zIL6TkE6q9BjOhTLwvpAtaKYggeW2ijCfeg/exec";
   
   // ==========================================
-  // CONFIG LOGIN (SILAKAN GANTI DI SINI)
+  // CONFIG LOGIN
   // ==========================================
   const AUTH_USERNAME = "P0sP4ck3t"; 
   const AUTH_PASSWORD = "4Cen6g0nd0k@"; 
   // ==========================================
+
+  // Variabel untuk menyimpan memori kontak
+  let memoriLokal = {};
 
   function handleLogin() {
     const user = document.getElementById('username').value;
@@ -128,14 +134,49 @@
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
         document.getElementById('user-display').innerText = localStorage.getItem('username');
+        
+        // Muat riwayat tabel
         muatData();
+        // Muat database nomor telepon secara diam-diam di background
+        muatDataKontak(); 
     }
   }
 
-  // Cek login setiap kali halaman dibuka
+  // --- LOGIKA AUTOFILL KONTAK ---
+  async function muatDataKontak() {
+    try {
+      const response = await fetch(`${SCRIPT_URL}?action=getKontak`);
+      memoriLokal = await response.json();
+      
+      let datalist = document.getElementById('listNama');
+      datalist.innerHTML = ''; 
+      
+      for (let nama in memoriLokal) {
+        let option = document.createElement('option');
+        // Ubah huruf awal jadi kapital untuk tampilan dropdown
+        option.value = nama.replace(/\b\w/g, l => l.toUpperCase()); 
+        datalist.appendChild(option);
+      }
+    } catch (e) {
+      console.log("Gagal memuat kontak:", e);
+    }
+  }
+
+  function cekDanIsiOtomatis() {
+    let inputNama = document.getElementById('pengambil').value.toLowerCase().trim();
+    let kolomTlp = document.getElementById('notlp');
+
+    // Jika nama ada di memori, otomatis isi kolom telp
+    if (memoriLokal[inputNama]) {
+      kolomTlp.value = memoriLokal[inputNama];
+      kolomTlp.style.backgroundColor = "#e8f0fe"; // Beri warna biru muda sebentar
+      setTimeout(() => { kolomTlp.style.backgroundColor = ""; }, 800);
+    }
+  }
+  // -----------------------------
+
   window.onload = checkAuth;
 
-  // --- LOGIKA APLIKASI (Sama seperti sebelumnya) ---
   let mode = 'masuk';
   let listData = [];
 
@@ -161,6 +202,7 @@
     document.getElementById('formKeluar').reset();
     document.getElementById('rowMasuk').value = '';
     document.getElementById('rowKeluar').value = '';
+    document.getElementById('notlp').style.backgroundColor = ""; // Reset warna
   }
 
   async function muatData() {
@@ -215,12 +257,26 @@
   function kirimData(t) {
     const f = document.getElementById(t === 'masuk' ? 'formMasuk' : 'formKeluar');
     const rowId = document.getElementById(t === 'masuk' ? 'rowMasuk' : 'rowKeluar').value;
+    
+    // Cegah multi-klik
+    const btnSubmit = document.getElementById(t === 'masuk' ? 'btnSaveMasuk' : 'btnSaveKeluar');
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = "Menyimpan...";
+
     let fd = new FormData(f);
     fd.append("formType", t);
     if(rowId) { fd.append("action", "edit"); fd.append("row", rowId); }
 
     fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' }).then(() => {
-      f.reset(); hideForm(); muatData();
+      f.reset(); 
+      hideForm(); 
+      muatData();
+      
+      // Update kontak jika ada nomor baru
+      if (t === 'keluar') { muatDataKontak(); }
+      
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = t === 'masuk' ? "Simpan Paket Masuk" : "Simpan Paket Keluar";
     });
   }
 
@@ -235,6 +291,7 @@
       scanner.clear().then(() => { document.getElementById('reader').style.display = 'none'; isScanning = false; });
     }
   }
+  
 </script>
 </body>
 </html>
