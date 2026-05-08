@@ -15,12 +15,14 @@
     #main-app { display: none; }
     .card { max-width: 700px; margin: auto; border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     .nav-pills .nav-link { border-radius: 10px; font-weight: bold; }
-    #reader { width: 100%; display: none; border-radius: 10px; border: 2px solid #0d6efd; margin-bottom: 10px; }
+    #reader { width: 100%; display: none; border-radius: 10px; border: 2px solid #0d6efd; margin-bottom: 10px; overflow: hidden; }
     .table-responsive { max-height: 500px; overflow-y: auto; }
     .action-btn { cursor: pointer; padding: 0 5px; font-size: 16px; }
     
     /* Animasi input autofill */
-    #notlp { transition: background-color 0.3s; }
+    #notlp { transition: background-color 0.3s ease; }
+    /* Memastikan dropdown berada di atas elemen lain */
+    .dropdown-saran-container { z-index: 1050; }
   </style>
 </head>
 <body>
@@ -54,13 +56,13 @@
         
         <div id="area-masuk">
           <div id="reader"></div>
-          <button class="btn btn-dark btn-sm w-100 mb-2" onclick="toggleScanner()">📷 Scan Barcode</button>
+          <button class="btn btn-dark btn-sm w-100 mb-3" onclick="toggleScanner()">📷 Scan Barcode</button>
           <form id="formMasuk" onsubmit="event.preventDefault(); kirimData('masuk');">
             <input type="hidden" name="rowId" id="rowMasuk">
             <input type="text" id="resi" name="resi" class="form-control mb-2" placeholder="Nomor Resi" required>
             <input type="text" id="alamatMasuk" name="alamatMasuk" class="form-control mb-2" placeholder="Nama / Alamat">
             <input type="number" id="jumlahMasuk" name="jumlahMasuk" class="form-control mb-3" value="1">
-            <button type="submit" id="btnSaveMasuk" class="btn btn-primary w-100">Simpan Paket Masuk</button>
+            <button type="submit" id="btnSaveMasuk" class="btn btn-primary w-100 fw-bold">Simpan Paket Masuk</button>
           </form>
         </div>
     
@@ -68,28 +70,34 @@
           <form id="formKeluar" onsubmit="event.preventDefault(); kirimData('keluar');">
             <input type="hidden" name="rowId" id="rowKeluar">
             <input type="text" id="pemilik" name="pemilik" class="form-control mb-2" placeholder="Pemilik Paket" required>
-            <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control mb-2" placeholder="Alamat">
+            <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control mb-3" placeholder="Alamat">
             
-            <input type="text" id="pengambil" name="pengambil" class="form-control mb-2" placeholder="Nama Pengambil" list="listNama" oninput="cekDanIsiOtomatis()" required>
-            <datalist id="listNama"></datalist> <input type="text" id="notlp" name="notlp" class="form-control mb-2" placeholder="No Tlp" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+            <div class="position-relative mb-2">
+              <input type="text" id="pengambil" name="pengambil" class="form-control" placeholder="Nama Pengambil" autocomplete="off" oninput="cariSaranNama()" required>
+              <ul id="dropdownSaran" class="list-group position-absolute w-100 shadow dropdown-saran-container" style="display: none; max-height: 200px; overflow-y: auto; border-radius: 8px;"></ul>
+            </div>
+            
+            <input type="text" id="notlp" name="notlp" class="form-control mb-3" placeholder="No Tlp" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
             <div class="row mb-3">
-                <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="FnB"></div>
-                <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Paket"></div>
+                <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="Jml FnB"></div>
+                <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Jml Paket"></div>
             </div>
             <input type="text" id="disposal" name="disposal" class="form-control mb-3" placeholder="Disposal">
-            <button type="submit" id="btnSaveKeluar" class="btn btn-primary w-100">Simpan Paket Keluar</button>
+            <button type="submit" id="btnSaveKeluar" class="btn btn-primary w-100 fw-bold">Simpan Paket Keluar</button>
           </form>
         </div>
-        <button class="btn btn-link btn-sm w-100 text-muted" onclick="hideForm()">Batal</button>
+        <button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="hideForm()">Batal</button>
       </div>
     
-      <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="d-flex justify-content-between align-items-center mb-2 mt-4">
         <h6 class="fw-bold mb-0">Riwayat Data</h6>
-        <button class="btn btn-sm btn-outline-secondary" onclick="muatData()">🔄 Refresh</button>
+        <button class="btn btn-sm btn-light border" onclick="muatData()">🔄 Refresh</button>
       </div>
-      <div id="loading" class="text-center my-3" style="display:none;">Memuat data...</div>
-      <div class="table-responsive">
-        <table class="table table-hover table-sm">
+      <div id="loading" class="text-center my-3 text-primary" style="display:none;">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memuat data...
+      </div>
+      <div class="table-responsive border rounded">
+        <table class="table table-hover table-sm mb-0">
           <thead class="table-light" id="th"></thead>
           <tbody id="tb"></tbody>
         </table>
@@ -98,6 +106,7 @@
 </div>
 
 <script>
+  // PASTIKAN URL INI ADALAH URL DEPLOYMENT GOOGLE SCRIPT TERBARU ANDA
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykEPWSKCuyU3I6_Z3x_eFMImOTVuL3YC8zIL6TkE6q9BjOhTLwvpAtaKYggeW2ijCfeg/exec";
   
   // ==========================================
@@ -107,8 +116,9 @@
   const AUTH_PASSWORD = "4Cen6g0nd0k@"; 
   // ==========================================
 
-  // Variabel untuk menyimpan memori kontak
   let memoriLokal = {};
+  let mode = 'masuk';
+  let listData = [];
 
   function handleLogin() {
     const user = document.getElementById('username').value;
@@ -135,50 +145,82 @@
         document.getElementById('main-app').style.display = 'block';
         document.getElementById('user-display').innerText = localStorage.getItem('username');
         
-        // Muat riwayat tabel
         muatData();
-        // Muat database nomor telepon secara diam-diam di background
         muatDataKontak(); 
     }
   }
 
-  // --- LOGIKA AUTOFILL KONTAK ---
+  window.onload = checkAuth;
+
+  // --- LOGIKA AUTOFILL KONTAK PINTAR ---
   async function muatDataKontak() {
     try {
       const response = await fetch(`${SCRIPT_URL}?action=getKontak`);
       memoriLokal = await response.json();
-      
-      let datalist = document.getElementById('listNama');
-      datalist.innerHTML = ''; 
-      
-      for (let nama in memoriLokal) {
-        let option = document.createElement('option');
-        // Ubah huruf awal jadi kapital untuk tampilan dropdown
-        option.value = nama.replace(/\b\w/g, l => l.toUpperCase()); 
-        datalist.appendChild(option);
-      }
     } catch (e) {
       console.log("Gagal memuat kontak:", e);
     }
   }
 
-  function cekDanIsiOtomatis() {
-    let inputNama = document.getElementById('pengambil').value.toLowerCase().trim();
+  function cariSaranNama() {
+    let inputKetik = document.getElementById('pengambil').value.toLowerCase().trim();
+    let dropdown = document.getElementById('dropdownSaran');
     let kolomTlp = document.getElementById('notlp');
 
-    // Jika nama ada di memori, otomatis isi kolom telp
-    if (memoriLokal[inputNama]) {
-      kolomTlp.value = memoriLokal[inputNama];
-      kolomTlp.style.backgroundColor = "#e8f0fe"; // Beri warna biru muda sebentar
-      setTimeout(() => { kolomTlp.style.backgroundColor = ""; }, 800);
+    dropdown.innerHTML = ''; 
+
+    if (inputKetik.length === 0) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
+    let adaHasil = false;
+
+    for (let namaDiMemori in memoriLokal) {
+      if (namaDiMemori.includes(inputKetik)) {
+        adaHasil = true;
+        
+        let li = document.createElement('li');
+        li.className = 'list-group-item list-group-item-action py-2';
+        li.style.cursor = 'pointer';
+        li.style.fontSize = '14px';
+        
+        let namaRapi = namaDiMemori.replace(/\b\w/g, l => l.toUpperCase());
+        li.innerHTML = `<strong>${namaRapi}</strong> <br> <small class="text-muted">${memoriLokal[namaDiMemori]}</small>`;
+        
+        li.onclick = function() {
+          document.getElementById('pengambil').value = namaRapi;
+          kolomTlp.value = memoriLokal[namaDiMemori];
+          
+          kolomTlp.style.backgroundColor = "#e8f0fe"; 
+          setTimeout(() => { kolomTlp.style.backgroundColor = ""; }, 800);
+          
+          dropdown.style.display = 'none'; 
+        };
+        
+        dropdown.appendChild(li);
+      }
+    }
+
+    if (adaHasil) {
+      dropdown.style.display = 'block';
+    } else {
+      dropdown.style.display = 'none';
+    }
+    
+    if (memoriLokal[inputKetik]) {
+       kolomTlp.value = memoriLokal[inputKetik];
     }
   }
+
+  document.addEventListener('click', function(event) {
+    let inputPengambil = document.getElementById('pengambil');
+    let dropdown = document.getElementById('dropdownSaran');
+    if (event.target !== inputPengambil && event.target !== dropdown) {
+      dropdown.style.display = 'none';
+    }
+  });
   // -----------------------------
-
-  window.onload = checkAuth;
-
-  let mode = 'masuk';
-  let listData = [];
 
   function gantiTab(t) {
     mode = t;
@@ -202,7 +244,9 @@
     document.getElementById('formKeluar').reset();
     document.getElementById('rowMasuk').value = '';
     document.getElementById('rowKeluar').value = '';
-    document.getElementById('notlp').style.backgroundColor = ""; // Reset warna
+    document.getElementById('notlp').style.backgroundColor = ""; 
+    document.getElementById('dropdownSaran').style.display = 'none';
+    if(isScanning) toggleScanner();
   }
 
   async function muatData() {
@@ -216,9 +260,9 @@
       let b = '';
       for (let i = listData.length - 1; i >= 1; i--) {
         b += `<tr>
-                <td>${listData[i][0]}</td>
-                <td>${mode === 'masuk' ? listData[i][1] : listData[i][2]}</td>
-                <td>
+                <td class="align-middle">${listData[i][0]}</td>
+                <td class="align-middle">${mode === 'masuk' ? listData[i][1] : listData[i][2]}</td>
+                <td class="align-middle text-nowrap">
                     <span class="action-btn text-warning" onclick="editData(${i})">📝</span>
                     <span class="action-btn text-danger" onclick="hapusData(${i+1})">🗑️</span>
                 </td>
@@ -258,7 +302,6 @@
     const f = document.getElementById(t === 'masuk' ? 'formMasuk' : 'formKeluar');
     const rowId = document.getElementById(t === 'masuk' ? 'rowMasuk' : 'rowKeluar').value;
     
-    // Cegah multi-klik
     const btnSubmit = document.getElementById(t === 'masuk' ? 'btnSaveMasuk' : 'btnSaveKeluar');
     btnSubmit.disabled = true;
     btnSubmit.innerText = "Menyimpan...";
@@ -272,7 +315,6 @@
       hideForm(); 
       muatData();
       
-      // Update kontak jika ada nomor baru
       if (t === 'keluar') { muatDataKontak(); }
       
       btnSubmit.disabled = false;
@@ -282,16 +324,28 @@
 
   let scanner; let isScanning = false;
   function toggleScanner() {
+    const btnScan = document.querySelector('#area-masuk .btn-dark');
     if (!isScanning) {
       document.getElementById('reader').style.display = 'block';
-      scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 200 });
-      scanner.render((t) => { document.getElementById('resi').value = t; toggleScanner(); });
+      scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 150} });
+      scanner.render((t) => { 
+        document.getElementById('resi').value = t; 
+        toggleScanner(); 
+      });
       isScanning = true;
+      btnScan.innerText = '❌ Tutup Scanner';
+      btnScan.classList.replace('btn-dark', 'btn-danger');
     } else {
-      scanner.clear().then(() => { document.getElementById('reader').style.display = 'none'; isScanning = false; });
+      if(scanner) {
+        scanner.clear().then(() => { 
+          document.getElementById('reader').style.display = 'none'; 
+          isScanning = false; 
+          btnScan.innerText = '📷 Scan Barcode';
+          btnScan.classList.replace('btn-danger', 'btn-dark');
+        });
+      }
     }
   }
-  
 </script>
 </body>
 </html>
