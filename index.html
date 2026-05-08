@@ -8,25 +8,22 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { background-color: #f8f9fa; padding: 10px; font-size: 13px; }
-    /* Layar Login */
     #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 9999; display: flex; align-items: center; justify-content: center; }
     .login-card { width: 100%; max-width: 350px; padding: 20px; text-align: center; }
-    /* Aplikasi Utama */
     #main-app { display: none; }
     .card { max-width: 700px; margin: auto; border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     .nav-pills .nav-link { border-radius: 10px; font-weight: bold; }
     #reader { width: 100%; display: none; border-radius: 10px; border: 2px solid #0d6efd; margin-bottom: 10px; overflow: hidden; }
     .table-responsive { max-height: 500px; overflow-y: auto; }
     .action-btn { cursor: pointer; padding: 0 5px; font-size: 16px; }
-    
-    /* Animasi input autofill */
     #notlp { transition: background-color 0.3s ease; }
-    /* Memastikan dropdown berada di atas elemen lain */
     .dropdown-saran-container { z-index: 1050; }
 
-    /* Style untuk Badge Keranjang Resi */
     .resi-badge { display: inline-block; background-color: #e9ecef; color: #333; padding: 5px 10px; border-radius: 15px; margin: 3px; font-size: 12px; border: 1px solid #ccc; }
     .resi-badge span { cursor: pointer; color: #dc3545; font-weight: bold; margin-left: 8px; }
+    
+    /* Tambahan efek transisi untuk alert duplikat */
+    #inputManualResi { transition: background-color 0.3s ease; }
   </style>
 </head>
 <body>
@@ -124,17 +121,14 @@
 </div>
 
 <script>
-  // PASTIKAN URL INI ADALAH URL DEPLOYMENT GOOGLE SCRIPT TERBARU ANDA
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykEPWSKCuyU3I6_Z3x_eFMImOTVuL3YC8zIL6TkE6q9BjOhTLwvpAtaKYggeW2ijCfeg/exec";
-  
-  // CONFIG LOGIN
   const AUTH_USERNAME = "P0sP4ck3t"; 
   const AUTH_PASSWORD = "4Cen6g0nd0k@"; 
 
   let memoriLokal = {};
   let mode = 'masuk';
   let listData = [];
-  let keranjangResi = []; // Array untuk menampung banyak resi
+  let keranjangResi = []; 
 
   function handleLogin() {
     const user = document.getElementById('username').value;
@@ -160,7 +154,6 @@
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
         document.getElementById('user-display').innerText = localStorage.getItem('username');
-        
         muatData();
         muatDataKontak(); 
     }
@@ -168,7 +161,6 @@
 
   window.onload = checkAuth;
 
-  // --- LOGIKA AUTOFILL KONTAK PINTAR ---
   async function muatDataKontak() {
     try {
       const response = await fetch(`${SCRIPT_URL}?action=getKontak`);
@@ -183,11 +175,7 @@
 
     dropdown.innerHTML = ''; 
 
-    if (inputKetik.length === 0) {
-      dropdown.style.display = 'none';
-      return;
-    }
-
+    if (inputKetik.length === 0) { dropdown.style.display = 'none'; return; }
     let adaHasil = false;
 
     for (let namaDiMemori in memoriLokal) {
@@ -210,7 +198,6 @@
         dropdown.appendChild(li);
       }
     }
-
     dropdown.style.display = adaHasil ? 'block' : 'none';
     if (memoriLokal[inputKetik]) { kolomTlp.value = memoriLokal[inputKetik]; }
   }
@@ -223,16 +210,29 @@
     }
   });
 
-  // --- LOGIKA KERANJANG RESI ---
+  // --- LOGIKA KERANJANG RESI (DENGAN ANTI-DUPLIKAT) ---
   function tambahKeKeranjang(valScanned) {
     let inputEl = document.getElementById('inputManualResi');
-    let resiBaru = valScanned || inputEl.value.trim();
+    let resiRaw = valScanned || inputEl.value;
+    let resiBaru = resiRaw.trim(); // Hilangkan spasi berlebih
     
-    if (resiBaru && !keranjangResi.includes(resiBaru)) {
-      keranjangResi.push(resiBaru);
-      renderKeranjang();
+    if (!resiBaru) return false;
+
+    // Cek duplikat (mengabaikan perbedaan huruf besar/kecil)
+    let isDuplicate = keranjangResi.some(item => item.toLowerCase() === resiBaru.toLowerCase());
+
+    if (isDuplicate) {
+      // Efek visual jika duplikat (Merah)
+      inputEl.style.backgroundColor = "#f8d7da";
+      inputEl.value = "⚠️ Sudah ada!";
+      setTimeout(() => { inputEl.style.backgroundColor = ""; inputEl.value = ""; }, 1000);
+      return false; // Berhenti di sini, jangan tambahkan
     }
+
+    keranjangResi.push(resiBaru);
+    renderKeranjang();
     inputEl.value = ''; 
+    return true; // Sukses ditambah
   }
 
   function hapusDariKeranjang(index) {
@@ -276,7 +276,6 @@
     document.getElementById('notlp').style.backgroundColor = ""; 
     document.getElementById('dropdownSaran').style.display = 'none';
     
-    // Reset keranjang saat batal/tutup form
     keranjangResi = [];
     renderKeranjang();
     if(isScanning) tutupScanner();
@@ -324,7 +323,6 @@
         document.getElementById('paket').value = row[5];
         document.getElementById('disposal').value = row[6];
         
-        // Menarik data resi dari Index ke-8 (Kolom I / Ujung)
         if(row[8] && row[8].toString().trim() !== '') {
            keranjangResi = row[8].toString().split(',').map(item => item.trim());
            renderKeranjang();
@@ -353,15 +351,13 @@
       f.reset(); 
       hideForm(); 
       muatData();
-      
       if (t === 'keluar') { muatDataKontak(); }
-      
       btnSubmit.disabled = false;
       btnSubmit.innerText = t === 'masuk' ? "Simpan Paket Masuk" : "Simpan Paket Keluar";
     });
   }
 
-  // --- LOGIKA SCANNER MASUK & KELUAR ---
+  // --- LOGIKA SCANNER ---
   let scanner; 
   let isScanning = false;
   let targetScanner = 'masuk'; 
@@ -377,17 +373,19 @@
       scanner.render((textTerbaca) => { 
         
         if (targetScanner === 'masuk') {
-          // Tab Masuk: Scan sekali lalu tutup
           document.getElementById('resi').value = textTerbaca; 
           tutupScanner(); 
         } else {
-          // Tab Keluar: Scan berkali-kali masuk keranjang
-          tambahKeKeranjang(textTerbaca);
+          // Tab Keluar: Coba tambah ke keranjang
+          let sukses = tambahKeKeranjang(textTerbaca);
           
-          let inputEl = document.getElementById('inputManualResi');
-          inputEl.style.backgroundColor = "#d4edda";
-          inputEl.value = "Terscan: " + textTerbaca.substring(0,8) + "...";
-          setTimeout(() => { inputEl.style.backgroundColor = ""; inputEl.value = ""; }, 800);
+          // Jika sukses masuk (bukan duplikat), kasih warna hijau
+          if (sukses) {
+            let inputEl = document.getElementById('inputManualResi');
+            inputEl.style.backgroundColor = "#d4edda";
+            inputEl.value = "Terscan: " + textTerbaca.substring(0,8) + "...";
+            setTimeout(() => { inputEl.style.backgroundColor = ""; inputEl.value = ""; }, 800);
+          }
         }
 
       });
