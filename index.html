@@ -23,6 +23,10 @@
     #notlp { transition: background-color 0.3s ease; }
     /* Memastikan dropdown berada di atas elemen lain */
     .dropdown-saran-container { z-index: 1050; }
+
+    /* Style untuk Badge Keranjang Resi */
+    .resi-badge { display: inline-block; background-color: #e9ecef; color: #333; padding: 5px 10px; border-radius: 15px; margin: 3px; font-size: 12px; border: 1px solid #ccc; }
+    .resi-badge span { cursor: pointer; color: #dc3545; font-weight: bold; margin-left: 8px; }
   </style>
 </head>
 <body>
@@ -54,9 +58,11 @@
       <div id="form-container" style="display:none;" class="border p-3 rounded mb-3 bg-white shadow-sm">
         <h6 id="formTitle" class="fw-bold mb-3 text-primary">Tambah Data</h6>
         
+        <div id="reader"></div>
+        <button id="btnCloseScanner" class="btn btn-danger btn-sm w-100 mb-3" style="display:none;" onclick="tutupScanner()">❌ Tutup Scanner</button>
+
         <div id="area-masuk">
-          <div id="reader"></div>
-          <button class="btn btn-dark btn-sm w-100 mb-3" onclick="toggleScanner()">📷 Scan Barcode</button>
+          <button class="btn btn-dark btn-sm w-100 mb-3 btn-buka-scanner" onclick="bukaScanner('masuk')">📷 Scan Barcode Masuk</button>
           <form id="formMasuk" onsubmit="event.preventDefault(); kirimData('masuk');">
             <input type="hidden" name="rowId" id="rowMasuk">
             <input type="text" id="resi" name="resi" class="form-control mb-2" placeholder="Nomor Resi" required>
@@ -78,6 +84,18 @@
             </div>
             
             <input type="text" id="notlp" name="notlp" class="form-control mb-3" placeholder="No Tlp" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+            
+            <div class="p-2 border rounded mb-3 bg-light">
+              <label class="form-label small fw-bold">Daftar Resi (Bisa lebih dari 1)</label>
+              <div class="input-group input-group-sm mb-2">
+                <input type="text" id="inputManualResi" class="form-control" placeholder="Scan / Ketik Resi">
+                <button type="button" class="btn btn-dark" onclick="bukaScanner('keluar')">📷</button>
+                <button type="button" class="btn btn-secondary" onclick="tambahKeKeranjang()">Tambah</button>
+              </div>
+              <div id="keranjangResiContainer"></div>
+              <input type="hidden" id="daftarResi" name="daftarResi">
+            </div>
+
             <div class="row mb-3">
                 <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="Jml FnB"></div>
                 <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Jml Paket"></div>
@@ -109,16 +127,14 @@
   // PASTIKAN URL INI ADALAH URL DEPLOYMENT GOOGLE SCRIPT TERBARU ANDA
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykEPWSKCuyU3I6_Z3x_eFMImOTVuL3YC8zIL6TkE6q9BjOhTLwvpAtaKYggeW2ijCfeg/exec";
   
-  // ==========================================
   // CONFIG LOGIN
-  // ==========================================
   const AUTH_USERNAME = "P0sP4ck3t"; 
   const AUTH_PASSWORD = "4Cen6g0nd0k@"; 
-  // ==========================================
 
   let memoriLokal = {};
   let mode = 'masuk';
   let listData = [];
+  let keranjangResi = []; // Array untuk menampung banyak resi
 
   function handleLogin() {
     const user = document.getElementById('username').value;
@@ -157,9 +173,7 @@
     try {
       const response = await fetch(`${SCRIPT_URL}?action=getKontak`);
       memoriLokal = await response.json();
-    } catch (e) {
-      console.log("Gagal memuat kontak:", e);
-    }
+    } catch (e) { console.log("Gagal memuat kontak:", e); }
   }
 
   function cariSaranNama() {
@@ -179,11 +193,9 @@
     for (let namaDiMemori in memoriLokal) {
       if (namaDiMemori.includes(inputKetik)) {
         adaHasil = true;
-        
         let li = document.createElement('li');
         li.className = 'list-group-item list-group-item-action py-2';
-        li.style.cursor = 'pointer';
-        li.style.fontSize = '14px';
+        li.style.cursor = 'pointer'; li.style.fontSize = '14px';
         
         let namaRapi = namaDiMemori.replace(/\b\w/g, l => l.toUpperCase());
         li.innerHTML = `<strong>${namaRapi}</strong> <br> <small class="text-muted">${memoriLokal[namaDiMemori]}</small>`;
@@ -191,26 +203,16 @@
         li.onclick = function() {
           document.getElementById('pengambil').value = namaRapi;
           kolomTlp.value = memoriLokal[namaDiMemori];
-          
           kolomTlp.style.backgroundColor = "#e8f0fe"; 
           setTimeout(() => { kolomTlp.style.backgroundColor = ""; }, 800);
-          
           dropdown.style.display = 'none'; 
         };
-        
         dropdown.appendChild(li);
       }
     }
 
-    if (adaHasil) {
-      dropdown.style.display = 'block';
-    } else {
-      dropdown.style.display = 'none';
-    }
-    
-    if (memoriLokal[inputKetik]) {
-       kolomTlp.value = memoriLokal[inputKetik];
-    }
+    dropdown.style.display = adaHasil ? 'block' : 'none';
+    if (memoriLokal[inputKetik]) { kolomTlp.value = memoriLokal[inputKetik]; }
   }
 
   document.addEventListener('click', function(event) {
@@ -220,6 +222,33 @@
       dropdown.style.display = 'none';
     }
   });
+
+  // --- LOGIKA KERANJANG RESI ---
+  function tambahKeKeranjang(valScanned) {
+    let inputEl = document.getElementById('inputManualResi');
+    let resiBaru = valScanned || inputEl.value.trim();
+    
+    if (resiBaru && !keranjangResi.includes(resiBaru)) {
+      keranjangResi.push(resiBaru);
+      renderKeranjang();
+    }
+    inputEl.value = ''; 
+  }
+
+  function hapusDariKeranjang(index) {
+    keranjangResi.splice(index, 1);
+    renderKeranjang();
+  }
+
+  function renderKeranjang() {
+    let container = document.getElementById('keranjangResiContainer');
+    let html = '';
+    keranjangResi.forEach((resi, index) => {
+      html += `<div class="resi-badge">${resi} <span onclick="hapusDariKeranjang(${index})">✖</span></div>`;
+    });
+    container.innerHTML = html;
+    document.getElementById('daftarResi').value = keranjangResi.join(', ');
+  }
   // -----------------------------
 
   function gantiTab(t) {
@@ -246,7 +275,11 @@
     document.getElementById('rowKeluar').value = '';
     document.getElementById('notlp').style.backgroundColor = ""; 
     document.getElementById('dropdownSaran').style.display = 'none';
-    if(isScanning) toggleScanner();
+    
+    // Reset keranjang saat batal/tutup form
+    keranjangResi = [];
+    renderKeranjang();
+    if(isScanning) tutupScanner();
   }
 
   async function muatData() {
@@ -290,6 +323,12 @@
         document.getElementById('fnb').value = row[4];
         document.getElementById('paket').value = row[5];
         document.getElementById('disposal').value = row[6];
+        
+        // Menarik data resi dari Index ke-8 (Kolom I / Ujung)
+        if(row[8] && row[8].toString().trim() !== '') {
+           keranjangResi = row[8].toString().split(',').map(item => item.trim());
+           renderKeranjang();
+        }
     }
   }
 
@@ -322,28 +361,48 @@
     });
   }
 
-  let scanner; let isScanning = false;
-  function toggleScanner() {
-    const btnScan = document.querySelector('#area-masuk .btn-dark');
+  // --- LOGIKA SCANNER MASUK & KELUAR ---
+  let scanner; 
+  let isScanning = false;
+  let targetScanner = 'masuk'; 
+
+  function bukaScanner(target) {
+    targetScanner = target;
+    document.querySelectorAll('.btn-buka-scanner').forEach(btn => btn.style.display = 'none');
+    document.getElementById('reader').style.display = 'block';
+    document.getElementById('btnCloseScanner').style.display = 'block';
+    
     if (!isScanning) {
-      document.getElementById('reader').style.display = 'block';
       scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 150} });
-      scanner.render((t) => { 
-        document.getElementById('resi').value = t; 
-        toggleScanner(); 
+      scanner.render((textTerbaca) => { 
+        
+        if (targetScanner === 'masuk') {
+          // Tab Masuk: Scan sekali lalu tutup
+          document.getElementById('resi').value = textTerbaca; 
+          tutupScanner(); 
+        } else {
+          // Tab Keluar: Scan berkali-kali masuk keranjang
+          tambahKeKeranjang(textTerbaca);
+          
+          let inputEl = document.getElementById('inputManualResi');
+          inputEl.style.backgroundColor = "#d4edda";
+          inputEl.value = "Terscan: " + textTerbaca.substring(0,8) + "...";
+          setTimeout(() => { inputEl.style.backgroundColor = ""; inputEl.value = ""; }, 800);
+        }
+
       });
       isScanning = true;
-      btnScan.innerText = '❌ Tutup Scanner';
-      btnScan.classList.replace('btn-dark', 'btn-danger');
-    } else {
-      if(scanner) {
-        scanner.clear().then(() => { 
-          document.getElementById('reader').style.display = 'none'; 
-          isScanning = false; 
-          btnScan.innerText = '📷 Scan Barcode';
-          btnScan.classList.replace('btn-danger', 'btn-dark');
-        });
-      }
+    }
+  }
+
+  function tutupScanner() {
+    if(scanner) {
+      scanner.clear().then(() => { 
+        document.getElementById('reader').style.display = 'none'; 
+        document.getElementById('btnCloseScanner').style.display = 'none';
+        document.querySelectorAll('.btn-buka-scanner').forEach(btn => btn.style.display = 'block');
+        isScanning = false; 
+      });
     }
   }
 </script>
