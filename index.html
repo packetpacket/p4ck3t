@@ -108,7 +108,7 @@
         <button class="btn btn-sm btn-light border" onclick="muatData()">🔄 Refresh</button>
       </div>
 
-      <!-- FITUR SEARCH BARU -->
+      <!-- FITUR SEARCH -->
       <div class="mb-3">
         <input type="text" id="inputCari" class="form-control form-control-sm" placeholder="🔍 Cari data di tabel..." onkeyup="filterTabel()">
       </div>
@@ -166,7 +166,6 @@
 
   window.onload = checkAuth;
 
-  // --- FUNGSI SEARCH REAL-TIME ---
   function filterTabel() {
     let input = document.getElementById("inputCari");
     let filter = input.value.toUpperCase();
@@ -215,9 +214,10 @@
         let namaRapi = namaDiMemori.replace(/\b\w/g, l => l.toUpperCase());
         li.innerHTML = `<strong>${namaRapi}</strong> <br> <small class="text-muted">${memoriLokal[namaDiMemori]}</small>`;
         
+        // Logika diperbaiki: Autofill hanya terjadi saat list item di-klik
         li.onclick = function() {
           document.getElementById('pengambil').value = namaRapi;
-          kolomTlp.value = memoriLokal[namaDiMemori];
+          kolomTlp.value = memoriLokal[namaDiMemori]; // Nomor telp diisi di sini
           kolomTlp.style.backgroundColor = "#e8f0fe"; 
           setTimeout(() => { kolomTlp.style.backgroundColor = ""; }, 800);
           dropdown.style.display = 'none'; 
@@ -226,7 +226,7 @@
       }
     }
     dropdown.style.display = adaHasil ? 'block' : 'none';
-    if (memoriLokal[inputKetik]) { kolomTlp.value = memoriLokal[inputKetik]; }
+    // Autofill otomatis saat mengetik dihapus untuk menghindari salah data
   }
 
   document.addEventListener('click', function(event) {
@@ -307,7 +307,6 @@
   async function muatData() {
     if(localStorage.getItem('isLoggedIn') !== 'true') return;
     document.getElementById('loading').style.display = 'block';
-    // Reset input cari saat pindah tab/refresh
     document.getElementById('inputCari').value = ""; 
     try {
       const r = await fetch(`${SCRIPT_URL}?type=${mode}`);
@@ -395,7 +394,6 @@
     if (!isScanning) {
       scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 150} });
       scanner.render((textTerbaca) => { 
-        
         if (targetScanner === 'masuk') {
           document.getElementById('resi').value = textTerbaca; 
           tutupScanner(); 
