@@ -268,8 +268,18 @@
         body: formData
       });
 
-      const res = await response.text();
-      alert("Laporan Berhasil Dibuat!");
+      const downloadUrl = await response.text(); 
+      
+      // Logika Auto-Download format .docx
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.target = "_blank";
+      link.download = "Laporan_Piket_" + memo_no + ".docx";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      alert("Laporan Berhasil Dibuat & Download Dimulai!");
       tutupModalLaporan();
     } catch (e) {
       alert("Gagal membuat laporan: " + e.toString());
@@ -279,8 +289,7 @@
     }
   }
 
-  // --- LOGIKA DATA (SAMA DENGAN SEBELUMNYA) ---
-
+  // --- LOGIKA DATA ---
   function filterTabel() {
     let input = document.getElementById("inputCari");
     let filter = input.value.toUpperCase();
