@@ -22,7 +22,6 @@
     .resi-badge { display: inline-block; background-color: #e9ecef; color: #333; padding: 5px 10px; border-radius: 15px; margin: 3px; font-size: 12px; border: 1px solid #ccc; }
     .resi-badge span { cursor: pointer; color: #dc3545; font-weight: bold; margin-left: 8px; }
     
-    /* Tambahan efek transisi untuk alert duplikat */
     #inputManualResi { transition: background-color 0.3s ease; }
   </style>
 </head>
@@ -108,11 +107,17 @@
         <h6 class="fw-bold mb-0">Riwayat Data</h6>
         <button class="btn btn-sm btn-light border" onclick="muatData()">🔄 Refresh</button>
       </div>
+
+      <!-- FITUR SEARCH BARU -->
+      <div class="mb-3">
+        <input type="text" id="inputCari" class="form-control form-control-sm" placeholder="🔍 Cari data di tabel..." onkeyup="filterTabel()">
+      </div>
+
       <div id="loading" class="text-center my-3 text-primary" style="display:none;">
         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memuat data...
       </div>
       <div class="table-responsive border rounded">
-        <table class="table table-hover table-sm mb-0">
+        <table class="table table-hover table-sm mb-0" id="tabelData">
           <thead class="table-light" id="th"></thead>
           <tbody id="tb"></tbody>
         </table>
@@ -160,6 +165,28 @@
   }
 
   window.onload = checkAuth;
+
+  // --- FUNGSI SEARCH REAL-TIME ---
+  function filterTabel() {
+    let input = document.getElementById("inputCari");
+    let filter = input.value.toUpperCase();
+    let table = document.getElementById("tabelData");
+    let tr = table.getElementsByTagName("tr");
+
+    for (let i = 1; i < tr.length; i++) {
+        let td1 = tr[i].getElementsByTagName("td")[0];
+        let td2 = tr[i].getElementsByTagName("td")[1];
+        if (td1 || td2) {
+            let txtValue1 = td1.textContent || td1.innerText;
+            let txtValue2 = td2.textContent || td2.innerText;
+            if (txtValue1.toUpperCase().indexOf(filter) > -1 || txtValue2.toUpperCase().indexOf(filter) > -1) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+  }
 
   async function muatDataKontak() {
     try {
@@ -210,29 +237,26 @@
     }
   });
 
-  // --- LOGIKA KERANJANG RESI (DENGAN ANTI-DUPLIKAT) ---
   function tambahKeKeranjang(valScanned) {
     let inputEl = document.getElementById('inputManualResi');
     let resiRaw = valScanned || inputEl.value;
-    let resiBaru = resiRaw.trim(); // Hilangkan spasi berlebih
+    let resiBaru = resiRaw.trim(); 
     
     if (!resiBaru) return false;
 
-    // Cek duplikat (mengabaikan perbedaan huruf besar/kecil)
     let isDuplicate = keranjangResi.some(item => item.toLowerCase() === resiBaru.toLowerCase());
 
     if (isDuplicate) {
-      // Efek visual jika duplikat (Merah)
       inputEl.style.backgroundColor = "#f8d7da";
       inputEl.value = "⚠️ Sudah ada!";
       setTimeout(() => { inputEl.style.backgroundColor = ""; inputEl.value = ""; }, 1000);
-      return false; // Berhenti di sini, jangan tambahkan
+      return false; 
     }
 
     keranjangResi.push(resiBaru);
     renderKeranjang();
     inputEl.value = ''; 
-    return true; // Sukses ditambah
+    return true; 
   }
 
   function hapusDariKeranjang(index) {
@@ -249,7 +273,6 @@
     container.innerHTML = html;
     document.getElementById('daftarResi').value = keranjangResi.join(', ');
   }
-  // -----------------------------
 
   function gantiTab(t) {
     mode = t;
@@ -284,6 +307,8 @@
   async function muatData() {
     if(localStorage.getItem('isLoggedIn') !== 'true') return;
     document.getElementById('loading').style.display = 'block';
+    // Reset input cari saat pindah tab/refresh
+    document.getElementById('inputCari').value = ""; 
     try {
       const r = await fetch(`${SCRIPT_URL}?type=${mode}`);
       listData = await r.json();
@@ -357,7 +382,6 @@
     });
   }
 
-  // --- LOGIKA SCANNER ---
   let scanner; 
   let isScanning = false;
   let targetScanner = 'masuk'; 
@@ -376,10 +400,7 @@
           document.getElementById('resi').value = textTerbaca; 
           tutupScanner(); 
         } else {
-          // Tab Keluar: Coba tambah ke keranjang
           let sukses = tambahKeKeranjang(textTerbaca);
-          
-          // Jika sukses masuk (bukan duplikat), kasih warna hijau
           if (sukses) {
             let inputEl = document.getElementById('inputManualResi');
             inputEl.style.backgroundColor = "#d4edda";
@@ -387,7 +408,6 @@
             setTimeout(() => { inputEl.style.backgroundColor = ""; inputEl.value = ""; }, 800);
           }
         }
-
       });
       isScanning = true;
     }
