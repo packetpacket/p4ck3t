@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-  <title>Bolang Paket</title>
+  <title>Bolang Paket - Testing Dev</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- Google Identity Services Library -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     body { background-color: #f8f9fa; padding: 10px; font-size: 13px; }
     #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-    .login-card { width: 100%; max-width: 350px; padding: 20px; text-align: center; }
+    .login-card { width: 100%; max-width: 350px; padding: 25px; text-align: center; }
     #main-app { display: none; }
     .card { max-width: 700px; margin: auto; border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     .nav-pills .nav-link { border-radius: 10px; font-weight: bold; }
@@ -18,22 +20,33 @@
     .action-btn { cursor: pointer; padding: 0 5px; font-size: 16px; }
     #notlp { transition: background-color 0.3s ease; }
     .dropdown-saran-container { z-index: 1050; }
-
     .resi-badge { display: inline-block; background-color: #e9ecef; color: #333; padding: 5px 10px; border-radius: 15px; margin: 3px; font-size: 12px; border: 1px solid #ccc; }
     .resi-badge span { cursor: pointer; color: #dc3545; font-weight: bold; margin-left: 8px; }
-    
-    #inputManualResi { transition: background-color 0.3s ease; }
+    #pin-section { display: none; border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
   </style>
 </head>
 <body>
 
 <div id="login-screen">
-  <div class="login-card shadow rounded p-4">
-    <h4 class="fw-bold mb-4">🔐 Login Sistem</h4>
+  <div class="login-card shadow rounded">
+    <h4 class="fw-bold mb-4">🔐 Login Sistem (Dev)</h4>
     <div id="login-error" class="text-danger small mb-3"></div>
-    <input type="text" id="username" class="form-control mb-3" placeholder="Username">
-    <input type="password" id="password" class="form-control mb-4" placeholder="Password">
-    <button class="btn btn-primary w-100 fw-bold" onclick="handleLogin()">Masuk</button>
+    
+    <!-- Tombol Google Login -->
+    <div id="g_id_onload"
+         data-client_id="1044744704622-meh55ul191hi8d049mu1231ce4tomoq8.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin d-flex justify-content-center" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left">
+    </div>
+
+    <!-- Seksi PIN (Muncul setelah Google Login sukses) -->
+    <div id="pin-section">
+      <p class="text-muted small">Halo <span id="email-display" class="fw-bold"></span>, masukkan PIN akses:</p>
+      <input type="password" id="user-pin" class="form-control mb-3 text-center" placeholder="PIN 6 Digit" maxlength="6" inputmode="numeric">
+      <button id="btnVerifikasi" class="btn btn-primary w-100 fw-bold" onclick="verifikasiAkses()">Masuk ke Sistem</button>
+    </div>
   </div>
 </div>
 
@@ -53,7 +66,6 @@
     
       <div id="form-container" style="display:none;" class="border p-3 rounded mb-3 bg-white shadow-sm">
         <h6 id="formTitle" class="fw-bold mb-3 text-primary">Tambah Data</h6>
-        
         <div id="reader"></div>
         <button id="btnCloseScanner" class="btn btn-danger btn-sm w-100 mb-3" style="display:none;" onclick="tutupScanner()">❌ Tutup Scanner</button>
 
@@ -73,16 +85,13 @@
             <input type="hidden" name="rowId" id="rowKeluar">
             <input type="text" id="pemilik" name="pemilik" class="form-control mb-2" placeholder="Pemilik Paket" required>
             <input type="text" id="alamatKeluar" name="alamatKeluar" class="form-control mb-3" placeholder="Alamat">
-            
             <div class="position-relative mb-2">
               <input type="text" id="pengambil" name="pengambil" class="form-control" placeholder="Nama Pengambil" autocomplete="off" oninput="cariSaranNama()" required>
               <ul id="dropdownSaran" class="list-group position-absolute w-100 shadow dropdown-saran-container" style="display: none; max-height: 200px; overflow-y: auto; border-radius: 8px;"></ul>
             </div>
-            
             <input type="text" id="notlp" name="notlp" class="form-control mb-3" placeholder="No Tlp" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
-            
             <div class="p-2 border rounded mb-3 bg-light">
-              <label class="form-label small fw-bold">Daftar Resi (Bisa lebih dari 1)</label>
+              <label class="form-label small fw-bold">Daftar Resi</label>
               <div class="input-group input-group-sm mb-2">
                 <input type="text" id="inputManualResi" class="form-control" placeholder="Scan / Ketik Resi">
                 <button type="button" class="btn btn-dark" onclick="bukaScanner('keluar')">📷</button>
@@ -91,7 +100,6 @@
               <div id="keranjangResiContainer"></div>
               <input type="hidden" id="daftarResi" name="daftarResi">
             </div>
-
             <div class="row mb-3">
                 <div class="col"><input type="number" id="fnb" name="jumlahFnb" class="form-control" placeholder="Jml FnB"></div>
                 <div class="col"><input type="number" id="paket" name="jumlahPaket" class="form-control" placeholder="Jml Paket"></div>
@@ -107,14 +115,11 @@
         <h6 class="fw-bold mb-0">Riwayat Data</h6>
         <button class="btn btn-sm btn-light border" onclick="muatData()">🔄 Refresh</button>
       </div>
-
-      <!-- FITUR SEARCH -->
       <div class="mb-3">
-        <input type="text" id="inputCari" class="form-control form-control-sm" placeholder="🔍 Cari data di tabel..." onkeyup="filterTabel()">
+        <input type="text" id="inputCari" class="form-control form-control-sm" placeholder="🔍 Cari data..." onkeyup="filterTabel()">
       </div>
-
       <div id="loading" class="text-center my-3 text-primary" style="display:none;">
-        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memuat data...
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memuat...
       </div>
       <div class="table-responsive border rounded">
         <table class="table table-hover table-sm mb-0" id="tabelData">
@@ -126,39 +131,60 @@
 </div>
 
 <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykEPWSKCuyU3I6_Z3x_eFMImOTVuL3YC8zIL6TkE6q9BjOhTLwvpAtaKYggeW2ijCfeg/exec";
-  const AUTH_USERNAME = "P0sP4ck3t"; 
-  const AUTH_PASSWORD = "4Cen6g0nd0k@"; 
-
+  // Link Apps Script Dev (Link Pengujian)
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnGLtkXKJvk5OgBlf1jatir_8GGRkbB4jwTM1PgztoGieZekILQG-DaMH3HsIvSy3ArQ/exec";
+  
+  let userEmailAktif = "";
   let memoriLokal = {};
   let mode = 'masuk';
   let listData = [];
   let keranjangResi = []; 
 
-  function handleLogin() {
-    const user = document.getElementById('username').value;
-    const pass = document.getElementById('password').value;
-    const error = document.getElementById('login-error');
+  function handleCredentialResponse(response) {
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    userEmailAktif = payload.email;
+    document.getElementById('email-display').innerText = userEmailAktif;
+    document.querySelector('.g_id_signin').style.display = 'none';
+    document.getElementById('pin-section').style.display = 'block';
+  }
 
-    if (user === AUTH_USERNAME && pass === AUTH_PASSWORD) {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('username', user);
+  async function verifikasiAkses() {
+    const pin = document.getElementById('user-pin').value;
+    const errorDisplay = document.getElementById('login-error');
+    const btn = document.getElementById('btnVerifikasi');
+    if(!pin) return;
+    btn.disabled = true;
+    btn.innerText = "Memverifikasi...";
+    try {
+      const response = await fetch(`${SCRIPT_URL}?action=checkAuth&email=${userEmailAktif}&pin=${pin}`);
+      const result = await response.json();
+      if(result.status === "SUCCESS") {
+        localStorage.setItem('isLoggedInDev', 'true');
+        localStorage.setItem('userEmailDev', userEmailAktif);
         checkAuth();
-    } else {
-        error.innerText = "Username atau Password salah!";
+      } else {
+        errorDisplay.innerText = "Akses Ditolak! Email tidak terdaftar atau PIN salah.";
+        btn.disabled = false;
+        btn.innerText = "Masuk ke Sistem";
+      }
+    } catch (e) {
+      errorDisplay.innerText = "Kesalahan koneksi ke server.";
+      btn.disabled = false;
+      btn.innerText = "Masuk ke Sistem";
     }
   }
 
   function handleLogout() {
-    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('isLoggedInDev');
+    localStorage.removeItem('userEmailDev');
     location.reload();
   }
 
   function checkAuth() {
-    if (localStorage.getItem('isLoggedIn') === 'true') {
+    if (localStorage.getItem('isLoggedInDev') === 'true') {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
-        document.getElementById('user-display').innerText = localStorage.getItem('username');
+        document.getElementById('user-display').innerText = localStorage.getItem('userEmailDev');
         muatData();
         muatDataKontak(); 
     }
@@ -166,12 +192,13 @@
 
   window.onload = checkAuth;
 
+  // --- LOGIKA UTAMA APLIKASI (SAMA DENGAN INDEX.HTML) ---
+
   function filterTabel() {
     let input = document.getElementById("inputCari");
     let filter = input.value.toUpperCase();
     let table = document.getElementById("tabelData");
     let tr = table.getElementsByTagName("tr");
-
     for (let i = 1; i < tr.length; i++) {
         let td1 = tr[i].getElementsByTagName("td")[0];
         let td2 = tr[i].getElementsByTagName("td")[1];
@@ -180,9 +207,7 @@
             let txtValue2 = td2.textContent || td2.innerText;
             if (txtValue1.toUpperCase().indexOf(filter) > -1 || txtValue2.toUpperCase().indexOf(filter) > -1) {
                 tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
+            } else { tr[i].style.display = "none"; }
         }
     }
   }
@@ -191,84 +216,54 @@
     try {
       const response = await fetch(`${SCRIPT_URL}?action=getKontak`);
       memoriLokal = await response.json();
-    } catch (e) { console.log("Gagal memuat kontak:", e); }
+    } catch (e) { console.log(e); }
   }
 
   function cariSaranNama() {
     let inputKetik = document.getElementById('pengambil').value.toLowerCase().trim();
     let dropdown = document.getElementById('dropdownSaran');
     let kolomTlp = document.getElementById('notlp');
-
     dropdown.innerHTML = ''; 
-
     if (inputKetik.length === 0) { dropdown.style.display = 'none'; return; }
     let adaHasil = false;
-
     for (let namaDiMemori in memoriLokal) {
       if (namaDiMemori.includes(inputKetik)) {
         adaHasil = true;
         let li = document.createElement('li');
         li.className = 'list-group-item list-group-item-action py-2';
-        li.style.cursor = 'pointer'; li.style.fontSize = '14px';
-        
         let namaRapi = namaDiMemori.replace(/\b\w/g, l => l.toUpperCase());
         li.innerHTML = `<strong>${namaRapi}</strong> <br> <small class="text-muted">${memoriLokal[namaDiMemori]}</small>`;
-        
-        // Logika diperbaiki: Autofill hanya terjadi saat list item di-klik
         li.onclick = function() {
           document.getElementById('pengambil').value = namaRapi;
-          kolomTlp.value = memoriLokal[namaDiMemori]; // Nomor telp diisi di sini
-          kolomTlp.style.backgroundColor = "#e8f0fe"; 
-          setTimeout(() => { kolomTlp.style.backgroundColor = ""; }, 800);
+          kolomTlp.value = memoriLokal[namaDiMemori];
           dropdown.style.display = 'none'; 
         };
         dropdown.appendChild(li);
       }
     }
     dropdown.style.display = adaHasil ? 'block' : 'none';
-    // Autofill otomatis saat mengetik dihapus untuk menghindari salah data
   }
-
-  document.addEventListener('click', function(event) {
-    let inputPengambil = document.getElementById('pengambil');
-    let dropdown = document.getElementById('dropdownSaran');
-    if (event.target !== inputPengambil && event.target !== dropdown) {
-      dropdown.style.display = 'none';
-    }
-  });
 
   function tambahKeKeranjang(valScanned) {
     let inputEl = document.getElementById('inputManualResi');
     let resiRaw = valScanned || inputEl.value;
     let resiBaru = resiRaw.trim(); 
-    
     if (!resiBaru) return false;
-
-    let isDuplicate = keranjangResi.some(item => item.toLowerCase() === resiBaru.toLowerCase());
-
-    if (isDuplicate) {
-      inputEl.style.backgroundColor = "#f8d7da";
-      inputEl.value = "⚠️ Sudah ada!";
-      setTimeout(() => { inputEl.style.backgroundColor = ""; inputEl.value = ""; }, 1000);
+    if (keranjangResi.some(item => item.toLowerCase() === resiBaru.toLowerCase())) {
+      inputEl.value = "⚠️ Duplikat!";
+      setTimeout(() => { inputEl.value = ""; }, 800);
       return false; 
     }
-
     keranjangResi.push(resiBaru);
     renderKeranjang();
-    inputEl.value = ''; 
-    return true; 
-  }
-
-  function hapusDariKeranjang(index) {
-    keranjangResi.splice(index, 1);
-    renderKeranjang();
+    inputEl.value = ''; return true; 
   }
 
   function renderKeranjang() {
     let container = document.getElementById('keranjangResiContainer');
     let html = '';
     keranjangResi.forEach((resi, index) => {
-      html += `<div class="resi-badge">${resi} <span onclick="hapusDariKeranjang(${index})">✖</span></div>`;
+      html += `<div class="resi-badge">${resi} <span onclick="keranjangResi.splice(${index},1); renderKeranjang();">✖</span></div>`;
     });
     container.innerHTML = html;
     document.getElementById('daftarResi').value = keranjangResi.join(', ');
@@ -286,7 +281,7 @@
   function showForm(edit = false) {
     document.getElementById('form-container').style.display = 'block';
     document.getElementById('btnTambah').style.display = 'none';
-    document.getElementById('formTitle').innerText = edit ? "Edit Data" : "Tambah Data Baru";
+    document.getElementById('formTitle').innerText = edit ? "Edit Data" : "Tambah Baru";
   }
 
   function hideForm() {
@@ -294,20 +289,13 @@
     document.getElementById('btnTambah').style.display = 'block';
     document.getElementById('formMasuk').reset();
     document.getElementById('formKeluar').reset();
-    document.getElementById('rowMasuk').value = '';
-    document.getElementById('rowKeluar').value = '';
-    document.getElementById('notlp').style.backgroundColor = ""; 
-    document.getElementById('dropdownSaran').style.display = 'none';
-    
-    keranjangResi = [];
-    renderKeranjang();
+    keranjangResi = []; renderKeranjang();
     if(isScanning) tutupScanner();
   }
 
   async function muatData() {
-    if(localStorage.getItem('isLoggedIn') !== 'true') return;
+    if(localStorage.getItem('isLoggedInDev') !== 'true') return;
     document.getElementById('loading').style.display = 'block';
-    document.getElementById('inputCari').value = ""; 
     try {
       const r = await fetch(`${SCRIPT_URL}?type=${mode}`);
       listData = await r.json();
@@ -346,66 +334,40 @@
         document.getElementById('fnb').value = row[4];
         document.getElementById('paket').value = row[5];
         document.getElementById('disposal').value = row[6];
-        
-        if(row[8] && row[8].toString().trim() !== '') {
-           keranjangResi = row[8].toString().split(',').map(item => item.trim());
-           renderKeranjang();
-        }
+        if(row[8]) { keranjangResi = row[8].toString().split(',').map(s=>s.trim()); renderKeranjang(); }
     }
   }
 
-  async function hapusData(num) {
-    if(!confirm("Hapus baris ini?")) return;
+  function hapusData(num) {
+    if(!confirm("Hapus?")) return;
     fetch(`${SCRIPT_URL}?action=delete&type=${mode}&row=${num}`, { mode: 'no-cors' }).then(() => muatData());
   }
 
   function kirimData(t) {
     const f = document.getElementById(t === 'masuk' ? 'formMasuk' : 'formKeluar');
     const rowId = document.getElementById(t === 'masuk' ? 'rowMasuk' : 'rowKeluar').value;
-    
-    const btnSubmit = document.getElementById(t === 'masuk' ? 'btnSaveMasuk' : 'btnSaveKeluar');
-    btnSubmit.disabled = true;
-    btnSubmit.innerText = "Menyimpan...";
-
+    const btn = document.getElementById(t === 'masuk' ? 'btnSaveMasuk' : 'btnSaveKeluar');
+    btn.disabled = true; btn.innerText = "Menyimpan...";
     let fd = new FormData(f);
     fd.append("formType", t);
     if(rowId) { fd.append("action", "edit"); fd.append("row", rowId); }
-
     fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' }).then(() => {
-      f.reset(); 
-      hideForm(); 
-      muatData();
-      if (t === 'keluar') { muatDataKontak(); }
-      btnSubmit.disabled = false;
-      btnSubmit.innerText = t === 'masuk' ? "Simpan Paket Masuk" : "Simpan Paket Keluar";
+      f.reset(); hideForm(); muatData();
+      if (t === 'keluar') muatDataKontak();
+      btn.disabled = false; btn.innerText = "Simpan";
     });
   }
 
-  let scanner; 
-  let isScanning = false;
-  let targetScanner = 'masuk'; 
-
+  let scanner; let isScanning = false;
   function bukaScanner(target) {
-    targetScanner = target;
-    document.querySelectorAll('.btn-buka-scanner').forEach(btn => btn.style.display = 'none');
+    document.querySelectorAll('.btn-buka-scanner').forEach(b => b.style.display = 'none');
     document.getElementById('reader').style.display = 'block';
     document.getElementById('btnCloseScanner').style.display = 'block';
-    
     if (!isScanning) {
       scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 150} });
-      scanner.render((textTerbaca) => { 
-        if (targetScanner === 'masuk') {
-          document.getElementById('resi').value = textTerbaca; 
-          tutupScanner(); 
-        } else {
-          let sukses = tambahKeKeranjang(textTerbaca);
-          if (sukses) {
-            let inputEl = document.getElementById('inputManualResi');
-            inputEl.style.backgroundColor = "#d4edda";
-            inputEl.value = "Terscan: " + textTerbaca.substring(0,8) + "...";
-            setTimeout(() => { inputEl.style.backgroundColor = ""; inputEl.value = ""; }, 800);
-          }
-        }
+      scanner.render((text) => { 
+        if (target === 'masuk') { document.getElementById('resi').value = text; tutupScanner(); }
+        else { tambahKeKeranjang(text); }
       });
       isScanning = true;
     }
@@ -416,7 +378,7 @@
       scanner.clear().then(() => { 
         document.getElementById('reader').style.display = 'none'; 
         document.getElementById('btnCloseScanner').style.display = 'none';
-        document.querySelectorAll('.btn-buka-scanner').forEach(btn => btn.style.display = 'block');
+        document.querySelectorAll('.btn-buka-scanner').forEach(b => b.style.display = 'block');
         isScanning = false; 
       });
     }
