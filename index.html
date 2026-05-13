@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-  <title>Bolang Paket - Testing Dev</title>
+  <title>Bolang Paket - Official System</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <!-- Google Identity Services Library -->
@@ -23,16 +23,18 @@
     .resi-badge { display: inline-block; background-color: #e9ecef; color: #333; padding: 5px 10px; border-radius: 15px; margin: 3px; font-size: 12px; border: 1px solid #ccc; }
     .resi-badge span { cursor: pointer; color: #dc3545; font-weight: bold; margin-left: 8px; }
     #pin-section { display: none; border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
+    
+    /* Tambahan Style Modal Laporan */
+    .modal-laporan { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; display: none; overflow-y: auto; }
+    .modal-content-laporan { background: white; width: 95%; max-width: 450px; margin: 20px auto; padding: 20px; border-radius: 15px; }
   </style>
 </head>
 <body>
 
 <div id="login-screen">
   <div class="login-card shadow rounded">
-    <h4 class="fw-bold mb-4">🔐 Login Sistem (Dev)</h4>
+    <h4 class="fw-bold mb-4">🔐 Login Sistem</h4>
     <div id="login-error" class="text-danger small mb-3"></div>
-    
-    <!-- Tombol Google Login -->
     <div id="g_id_onload"
          data-client_id="1044744704622-meh55ul191hi8d049mu1231ce4tomoq8.apps.googleusercontent.com"
          data-callback="handleCredentialResponse"
@@ -41,7 +43,6 @@
     <div class="g_id_signin d-flex justify-content-center" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left">
     </div>
 
-    <!-- Seksi PIN (Muncul setelah Google Login sukses) -->
     <div id="pin-section">
       <p class="text-muted small">Halo <span id="email-display" class="fw-bold"></span>, masukkan PIN akses:</p>
       <input type="password" id="user-pin" class="form-control mb-3 text-center" placeholder="PIN 6 Digit" maxlength="6" inputmode="numeric">
@@ -62,8 +63,10 @@
         <li class="nav-item"><button class="nav-link" id="btnTabKeluar" onclick="gantiTab('keluar')">📤 Keluar</button></li>
       </ul>
     
-      <button id="btnTambah" class="btn btn-primary w-100 mb-3 fw-bold" onclick="showForm()">➕ Tambah Data</button>
+      <button id="btnTambah" class="btn btn-primary w-100 mb-2 fw-bold" onclick="showForm()">➕ Tambah Data</button>
+      <button class="btn btn-success w-100 mb-3 fw-bold shadow-sm" onclick="bukaModalLaporan()">📊 Buat Laporan Memo</button>
     
+      <!-- Form Input Data (Masuk/Keluar) -->
       <div id="form-container" style="display:none;" class="border p-3 rounded mb-3 bg-white shadow-sm">
         <h6 id="formTitle" class="fw-bold mb-3 text-primary">Tambah Data</h6>
         <div id="reader"></div>
@@ -130,8 +133,39 @@
     </div>
 </div>
 
+<!-- Modal Form Laporan Memo -->
+<div id="modalLaporan" class="modal-laporan">
+  <div class="modal-content-laporan shadow">
+    <h5 class="fw-bold text-success mb-3">📝 Buat Laporan Memo</h5>
+    <div class="mb-3">
+      <label class="form-label small fw-bold">Nomor Urut Memo</label>
+      <input type="number" id="memo_no" class="form-control" placeholder="Contoh: 027">
+    </div>
+    <div class="mb-3">
+      <label class="form-label small fw-bold">Jumlah Surat (Manual)</label>
+      <input type="number" id="memo_surat" class="form-control" placeholder="Masukkan jumlah surat hari ini">
+    </div>
+    <div class="mb-3">
+      <label class="form-label small fw-bold">Petugas Piket</label>
+      <input type="text" id="memo_petugas" class="form-control" placeholder="Nama petugas yang bertugas">
+    </div>
+    <hr>
+    <div class="mb-3">
+      <label class="form-label small fw-bold text-primary">📷 Foto Eviden 1 (Kegiatan)</label>
+      <input type="file" id="memo_foto1" class="form-control form-control-sm" accept="image/*">
+    </div>
+    <div class="mb-3">
+      <label class="form-label small fw-bold text-primary">📷 Foto Eviden 2 (Serah Terima)</label>
+      <input type="file" id="memo_foto2" class="form-control form-control-sm" accept="image/*">
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button class="btn btn-secondary w-50" onclick="tutupModalLaporan()">Batal</button>
+      <button class="btn btn-success w-50 fw-bold" id="btnGenerate" onclick="prosesGenerateReport()">Kirim Laporan</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  // Link Apps Script Dev (Link Pengujian)
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnGLtkXKJvk5OgBlf1jatir_8GGRkbB4jwTM1PgztoGieZekILQG-DaMH3HsIvSy3ArQ/exec";
   
   let userEmailAktif = "";
@@ -192,7 +226,60 @@
 
   window.onload = checkAuth;
 
-  // --- LOGIKA UTAMA APLIKASI (SAMA DENGAN INDEX.HTML) ---
+  // --- FITUR LAPORAN ---
+  function bukaModalLaporan() { document.getElementById('modalLaporan').style.display = 'block'; }
+  function tutupModalLaporan() { document.getElementById('modalLaporan').style.display = 'none'; }
+
+  async function prosesGenerateReport() {
+    const btn = document.getElementById('btnGenerate');
+    const memo_no = document.getElementById('memo_no').value;
+    const memo_surat = document.getElementById('memo_surat').value;
+    const memo_petugas = document.getElementById('memo_petugas').value;
+    const f1 = document.getElementById('memo_foto1').files[0];
+    const f2 = document.getElementById('memo_foto2').files[0];
+
+    if(!memo_no || !memo_surat || !memo_petugas) { alert("Nomor, Jumlah Surat, dan Petugas wajib diisi!"); return; }
+
+    btn.disabled = true;
+    btn.innerText = "Mengirim...";
+
+    // Konversi foto ke base64
+    const toBase64 = file => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = error => reject(error);
+    });
+
+    try {
+      let b64_1 = f1 ? await toBase64(f1) : "";
+      let b64_2 = f2 ? await toBase64(f2) : "";
+
+      let formData = new URLSearchParams();
+      formData.append("action", "generateReport");
+      formData.append("no_urut", memo_no);
+      formData.append("jml_surat", memo_surat);
+      formData.append("petugas_piket", memo_petugas);
+      formData.append("eviden1", b64_1);
+      formData.append("eviden2", b64_2);
+
+      const response = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: formData
+      });
+
+      const res = await response.text();
+      alert("Laporan Berhasil Dibuat!");
+      tutupModalLaporan();
+    } catch (e) {
+      alert("Gagal membuat laporan: " + e.toString());
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "Kirim Laporan";
+    }
+  }
+
+  // --- LOGIKA DATA (SAMA DENGAN SEBELUMNYA) ---
 
   function filterTabel() {
     let input = document.getElementById("inputCari");
