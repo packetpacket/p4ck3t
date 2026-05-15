@@ -226,7 +226,6 @@
 
   window.onload = checkAuth;
 
-  // --- FITUR LAPORAN ---
   function bukaModalLaporan() { document.getElementById('modalLaporan').style.display = 'block'; }
   function tutupModalLaporan() { document.getElementById('modalLaporan').style.display = 'none'; }
 
@@ -243,7 +242,6 @@
     btn.disabled = true;
     btn.innerText = "Mengirim...";
 
-    // Konversi foto ke base64
     const toBase64 = file => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -269,8 +267,6 @@
       });
 
       const downloadUrl = await response.text(); 
-      
-      // Logika Auto-Download format .docx
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.target = "_blank";
@@ -289,7 +285,6 @@
     }
   }
 
-  // --- LOGIKA DATA ---
   function filterTabel() {
     let input = document.getElementById("inputCari");
     let filter = input.value.toUpperCase();
@@ -371,10 +366,7 @@
     document.getElementById('btnTabKeluar').classList.toggle('active', t === 'keluar');
     document.getElementById('area-masuk').style.display = t === 'masuk' ? 'block' : 'none';
     document.getElementById('area-keluar').style.display = t === 'keluar' ? 'block' : 'none';
-    
-    // Perbarui label tombol hapus massal
     document.getElementById('btnHapusMassal').innerText = `🗑️ Hapus Semua Paket ${t === 'masuk' ? 'Masuk' : 'Keluar'}`;
-    
     hideForm(); muatData();
   }
 
@@ -388,13 +380,14 @@
     document.getElementById('form-container').style.display = 'none';
     document.getElementById('btnTambah').style.display = 'block';
     
-    // PERBAIKAN: KOSONGKAN ID BARIS AGAR TIDAK KETIMPA
+    // PENTING: KOSONGKAN ID BARIS SETIAP KALI FORM DITUTUP
     document.getElementById('rowMasuk').value = ""; 
     document.getElementById('rowKeluar').value = ""; 
 
     document.getElementById('formMasuk').reset();
     document.getElementById('formKeluar').reset();
-    keranjangResi = []; renderKeranjang();
+    keranjangResi = []; 
+    renderKeranjang();
     if(isScanning) tutupScanner();
   }
 
@@ -450,19 +443,13 @@
 
   async function handleDeleteAll() {
     let pin = prompt(`⚠️ PERINGATAN: Masukkan PIN untuk menghapus SEMUA data Paket ${mode === 'masuk' ? 'MASUK' : 'KELUAR'}:`);
-    
     if (pin === null || pin === "") return;
-
     const btn = document.getElementById('btnHapusMassal');
     btn.disabled = true;
     btn.innerText = "Menghapus...";
-
     try {
-      const response = await fetch(`${SCRIPT_URL}?action=deleteAll&targetType=${mode}&pin=${pin}`, {
-        method: "POST"
-      });
+      const response = await fetch(`${SCRIPT_URL}?action=deleteAll&targetType=${mode}&pin=${pin}`, { method: "POST" });
       const result = await response.text();
-      
       alert(result);
       muatData(); 
     } catch (e) {
@@ -478,7 +465,8 @@
     const rowIdInput = document.getElementById(t === 'masuk' ? 'rowMasuk' : 'rowKeluar');
     const btn = document.getElementById(t === 'masuk' ? 'btnSaveMasuk' : 'btnSaveKeluar');
     
-    btn.disabled = true; btn.innerText = "Menyimpan...";
+    btn.disabled = true; 
+    btn.innerText = "Menyimpan...";
     
     let fd = new FormData(f);
     fd.append("formType", t);
@@ -490,7 +478,10 @@
     
     fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' }).then(() => {
       f.reset();
-      rowIdInput.value = ""; // PERBAIKAN: KOSONGKAN ID SETELAH SIMPAN
+      
+      // PENTING: KOSONGKAN ID SETELAH BERHASIL SIMPAN AGAR INPUT SELANJUTNYA TIDAK KETIMPA
+      rowIdInput.value = ""; 
+      
       hideForm(); 
       muatData();
       if (t === 'keluar') muatDataKontak();
