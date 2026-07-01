@@ -290,6 +290,7 @@
     .stat-label { font-size: 12px; color: var(--text-muted); }
     .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
     .stat-unit  { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+    .stat-breakdown { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
 
     /* ========== ACTION ROW ========== */
     .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
@@ -684,21 +685,23 @@
         <div class="stat-card">
           <div class="stat-icon blue"><i class="ti ti-package"></i></div>
           <div>
-            <div class="stat-label">Paket masuk</div>
+            <div class="stat-label">Paket Masuk</div>
             <div class="stat-value">
               <span id="statMasuk"><span class="spinner"></span></span>
               <span class="stat-unit" id="statMasukUnit"></span>
             </div>
+            <div class="stat-breakdown" id="statMasukBreakdown"></div>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon green"><i class="ti ti-truck-delivery"></i></div>
           <div>
-            <div class="stat-label">Paket keluar</div>
+            <div class="stat-label">Paket Keluar (Paket + Makanan)</div>
             <div class="stat-value">
               <span id="statKeluar"><span class="spinner"></span></span>
               <span class="stat-unit" id="statKeluarUnit"></span>
             </div>
+            <div class="stat-breakdown" id="statKeluarBreakdown"></div>
           </div>
         </div>
       </div>
@@ -1058,6 +1061,8 @@
     });
     document.getElementById('statMasukUnit').innerText  = '';
     document.getElementById('statKeluarUnit').innerText = '';
+    document.getElementById('statMasukBreakdown').innerText = '';
+    document.getElementById('statKeluarBreakdown').innerText = '';
     // tampilkan loading di tabel
     document.getElementById('tb').innerHTML =
       '<tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>';
@@ -1070,18 +1075,45 @@
       listDataMasuk  = rMasuk;
       listDataKeluar = rKeluar;
 
-      const jmlMasuk  = Math.max(0, listDataMasuk.length  - 1);
-      const jmlKeluar = Math.max(0, listDataKeluar.length - 1);
+      // Paket masuk = total kuantitas jumlahMasuk dari setiap baris data masuk,
+      // bukan sekadar jumlah baris/transaksi. Kolom index 2 = jumlahMasuk.
+      let jmlMasuk = 0;
+      for (let i = 1; i < listDataMasuk.length; i++) {
+        const row = listDataMasuk[i];
+        if (!row) continue;
+        const kode = String(row[0] || '').trim();
+        const nama = String(row[1] || '').trim();
+        if (!kode && !nama) continue; // skip baris kosong
+        jmlMasuk += parseInt(row[2], 10) || 1; // default 1 jika kolom kosong
+      }
+
+      // Paket keluar = jumlah paket + jumlah makanan (FnB) dari setiap baris data keluar,
+      // bukan sekadar jumlah baris/transaksi. Kolom index 4 = jumlahFnb, index 5 = jumlahPaket.
+      let totalPaketKeluar = 0;
+      let totalFnbKeluar   = 0;
+      for (let i = 1; i < listDataKeluar.length; i++) {
+        const row = listDataKeluar[i];
+        if (!row) continue;
+        totalFnbKeluar   += parseInt(row[4], 10) || 0;
+        totalPaketKeluar += parseInt(row[5], 10) || 0;
+      }
+      const jmlKeluar = totalPaketKeluar + totalFnbKeluar;
 
       document.getElementById('statMasuk').innerText   = jmlMasuk;
       document.getElementById('statKeluar').innerText  = jmlKeluar;
       document.getElementById('statMasukUnit').innerText  = jmlMasuk  !== 1 ? ' data' : ' data';
       document.getElementById('statKeluarUnit').innerText = jmlKeluar !== 1 ? ' data' : ' data';
+      document.getElementById('statMasukBreakdown').innerText =
+        `dari ${Math.max(0, listDataMasuk.length - 1)} transaksi`;
+      document.getElementById('statKeluarBreakdown').innerText =
+        `${totalPaketKeluar} paket • ${totalFnbKeluar} makanan`;
 
       renderTabel();
     } catch (e) {
       document.getElementById('statMasuk').innerText  = '!';
       document.getElementById('statKeluar').innerText = '!';
+      document.getElementById('statMasukBreakdown').innerText = '';
+      document.getElementById('statKeluarBreakdown').innerText = '';
       document.getElementById('tb').innerHTML =
         '<tr class="state-row"><td colspan="4">Gagal memuat data. Coba refresh.</td></tr>';
       console.error(e);
