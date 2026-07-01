@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
   <style>
     /* ========== RESET & BASE ========== */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -620,7 +621,7 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon"><i class="ti ti-package"></i></div>
-      <div class="logo-text">Bolang Paket</div>
+      <div class="logo-text">Packet Manager</div>
     </div>
 
     <nav class="nav-menu">
@@ -674,7 +675,7 @@
       <!-- GREETING -->
       <div class="greeting">
         <h1>Halo, <span id="greeting-name">User</span> 👋</h1>
-        <p>Selamat datang kembali di Bolang Paket</p>
+        <p>Selamat datang kembali di Packet Manager</p>
       </div>
 
       <!-- STATS -->
@@ -716,6 +717,9 @@
       <div class="section-header">
         <div class="section-title">Riwayat data terakhir</div>
         <div class="section-actions">
+          <button class="btn btn-ghost" onclick="exportToExcel()" title="Download Excel">
+            <i class="ti ti-file-download"></i><span id="exportLabel">Export Excel</span>
+          </button>
           <button class="btn btn-danger" id="btnHapusMassal" onclick="handleDeleteAll()">
             <i class="ti ti-trash"></i><span id="hapusLabel">Hapus semua</span>
           </button>
@@ -1093,21 +1097,35 @@
     const tbody = document.getElementById('tb');
     let rows = [];
 
+    // Ambil data masuk
     if (filterMode === 'semua' || filterMode === 'masuk') {
-      for (let i = listDataMasuk.length - 1; i >= 1; i--) {
-        rows.push({ kode: listDataMasuk[i][0] || '', nama: listDataMasuk[i][1] || '', jenis: 'masuk', idx: i });
+      for (let i = 1; i < listDataMasuk.length; i++) {
+        const kode = String(listDataMasuk[i][0] || '').trim();
+        const nama = String(listDataMasuk[i][1] || '').trim();
+        if (!kode && !nama) continue; // skip empty rows
+        rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk' });
       }
     }
+
+    // Ambil data keluar
     if (filterMode === 'semua' || filterMode === 'keluar') {
-      for (let i = listDataKeluar.length - 1; i >= 1; i--) {
-        rows.push({ kode: listDataKeluar[i][0] || '', nama: listDataKeluar[i][2] || '', jenis: 'keluar', idx: i });
+      for (let i = 1; i < listDataKeluar.length; i++) {
+        const kode = String(listDataKeluar[i][0] || '').trim();
+        const nama = String(listDataKeluar[i][2] || '').trim();
+        if (!kode && !nama) continue; // skip empty rows
+        rows.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar' });
       }
     }
 
-    if (q) rows = rows.filter(r =>
-      r.kode.toLowerCase().includes(q) || r.nama.toLowerCase().includes(q)
-    );
+    // Filter berdasarkan search query
+    if (q) {
+      rows = rows.filter(r => 
+        r.kode.toLowerCase().includes(q) || 
+        r.nama.toLowerCase().includes(q)
+      );
+    }
 
+    // Render hasil
     if (!rows.length) {
       tbody.innerHTML = `<tr class="state-row"><td colspan="4">Tidak ada data ditemukan</td></tr>`;
       return;
@@ -1120,10 +1138,10 @@
         <td style="color:var(--text-secondary);" title="${r.nama}">${r.nama || '—'}</td>
         <td><span class="badge ${r.jenis}">${r.jenis==='masuk'?'↓ Masuk':'↑ Keluar'}</span></td>
         <td>
-          <button class="tbl-btn edit" onclick="editData('${r.jenis}',${r.idx})" title="Edit">
+          <button class="tbl-btn edit" onclick="editData('${r.type}',${r.idx})" title="Edit">
             <i class="ti ti-edit"></i>
           </button>
-          <button class="tbl-btn del"  onclick="hapusData('${r.jenis}',${r.idx+1})" title="Hapus">
+          <button class="tbl-btn del"  onclick="hapusData('${r.type}',${r.idx+1})" title="Hapus">
             <i class="ti ti-trash"></i>
           </button>
         </td>
@@ -1437,6 +1455,99 @@
       }
     });
   });
+
+  /* ── EXPORT EXCEL ───────────────────────────────────────────── */
+  function exportToExcel() {
+    const btn = document.querySelector('[onclick="exportToExcel()"]');
+    const originalLabel = btn.querySelector('#exportLabel')?.innerText || 'Export Excel';
+    btn.disabled = true;
+    btn.querySelector('#exportLabel').innerText = 'Memproses…';
+
+    try {
+      let dataToExport = [];
+      
+      // Siapkan header
+      const headers = ['No', 'Jenis', 'Resi/Pemilik', 'Nama/Keterangan'];
+      
+      // Tambah data masuk
+      let no = 1;
+      for (let i = 1; i < listDataMasuk.length; i++) {
+        if (filterMode === 'semua' || filterMode === 'masuk') {
+          dataToExport.push([
+            no++,
+            'Masuk',
+            listDataMasuk[i][0] || '',
+            listDataMasuk[i][1] || ''
+          ]);
+        }
+      }
+      
+      // Tambah data keluar
+      for (let i = 1; i < listDataKeluar.length; i++) {
+        if (filterMode === 'semua' || filterMode === 'keluar') {
+          dataToExport.push([
+            no++,
+            'Keluar',
+            listDataKeluar[i][0] || '',
+            listDataKeluar[i][2] || ''
+          ]);
+        }
+      }
+
+      // Filter berdasarkan search query
+      const q = (document.getElementById('inputCariTabel').value || '').toLowerCase().trim();
+      if (q) {
+        dataToExport = dataToExport.filter(row =>
+          row[2].toLowerCase().includes(q) || 
+          row[3].toLowerCase().includes(q)
+        );
+      }
+
+      // Buat worksheet dengan data
+      const wsData = [headers, ...dataToExport];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Style header (background biru, text putih)
+      const headerStyle = {
+        fill: { fgColor: { rgb: "2563EB" } },
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: "center", vertical: "center" }
+      };
+
+      // Apply header style
+      for (let i = 0; i < headers.length; i++) {
+        const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
+        ws[cellRef].s = headerStyle;
+      }
+
+      // Set column width
+      ws['!cols'] = [
+        { wch: 5 },   // No
+        { wch: 10 },  // Jenis
+        { wch: 25 },  // Resi/Pemilik
+        { wch: 30 }   // Nama/Keterangan
+      ];
+
+      // Buat workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data Paket");
+
+      // Download
+      const filename = `Paket_${new Date().toISOString().slice(0,10)}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.querySelector('#exportLabel').innerText = originalLabel;
+      }, 500);
+
+    } catch (e) {
+      alert('Gagal export: ' + e.message);
+      btn.disabled = false;
+      btn.querySelector('#exportLabel').innerText = originalLabel;
+    }
+  }
+
 </script>
 </body>
 </html>
