@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>Bolang Paket – Sistem Manajemen Paket</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    /* ========== RESET & BASE ========== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:              #f0f2f8;
+      --surface:         #ffffff;
+      --surface-2:       #f5f6fa;
+      --border:          #e5e8f0;
+      --border-strong:   #d0d4e2;
+
+      --text-primary:    #1a1d2e;
+      --text-secondary:  #4b5069;
+      --text-muted:      #8b90a8;
+
+      --accent:          #2563eb;
+      --accent-dark:     #1d4ed8;
+      --accent-bg:       #eff4ff;
+      --accent-text:     #1d4ed8;
+
+      --green:           #16a34a;
+      --green-bg:        #f0fdf4;
+      --green-border:    #86efac;
+      --green-text:      #15803d;
+
+      --red:             #dc2626;
+      --red-bg:          #fef2f2;
+      --red-border:      #fca5a5;
+      --red-text:        #b91c1c;
+
+      --sidebar-w: 210px;
+      --topbar-h:  56px;
+      --radius:    10px;
+      --radius-sm: 7px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+      --shadow:    0 4px 16px rgba(0,0,0,.10);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-size: 13.5px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    input, button, select, textarea { font-family: inherit; font-size: 13px; }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="password"],
+    input[type="email"],
+    input[type="file"],
+    textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    input[type="file"] { padding: 7px 10px; cursor: pointer; }
+
+    button { cursor: pointer; border: none; transition: opacity .15s, background .15s, box-shadow .15s; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* ========== UTILITIES ========== */
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .gap-6 { gap: 6px; }
+    .gap-8 { gap: 8px; }
+    .w-full { width: 100%; }
+    .text-center { text-align: center; }
+
+    /* ========== LOGIN SCREEN ========== */
+    #login-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #0ea5e9 100%);
+      z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+
+    .login-card {
+      width: 100%; max-width: 360px;
+      background: white;
+      border-radius: 20px;
+      padding: 34px 28px 28px;
+      box-shadow: 0 30px 70px rgba(0,0,0,.22);
+      text-align: center;
+    }
+
+    .login-logo {
+      width: 58px; height: 58px;
+      background: var(--accent-bg);
+      color: var(--accent);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+    }
+
+    .login-title   { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+    .login-sub     { font-size: 12.5px; color: var(--text-muted); margin: 4px 0 24px; }
+
+    #login-error {
+      font-size: 12px;
+      color: var(--red-text);
+      background: var(--red-bg);
+      border: 1px solid var(--red-border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    #pin-section {
+      display: none;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      margin-top: 20px;
+    }
+
+    .pin-label { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 12px; }
+
+    /* ========== COMMON BUTTONS ========== */
+    .btn { border-radius: var(--radius-sm); font-weight: 500; font-size: 13.5px; padding: 9px 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn i { font-size: 16px; }
+    .btn-primary  { background: var(--accent); color: white; }
+    .btn-primary:hover:not(:disabled)  { background: var(--accent-dark); }
+    .btn-success  { background: var(--green); color: white; }
+    .btn-success:hover:not(:disabled)  { background: #15803d; }
+    .btn-ghost    { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
+    .btn-danger   { background: var(--red-bg); color: var(--red-text); border: 1px solid var(--red-border); }
+    .btn-danger:hover:not(:disabled) { background: #fee2e2; }
+    .btn-full     { width: 100%; }
+
+    /* ========== APP LAYOUT ========== */
+    #main-app { display: none; min-height: 100vh; }
+
+    .app-layout { display: flex; min-height: 100vh; }
+
+    /* ========== SIDEBAR ========== */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0;
+      height: 100vh; z-index: 100;
+      transition: transform .25s ease;
+    }
+
+    .sidebar-logo {
+      padding: 18px 16px 14px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px; flex-shrink: 0;
+    }
+
+    .logo-icon {
+      width: 32px; height: 32px;
+      border-radius: 9px;
+      background: var(--accent);
+      color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+
+    .logo-text { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
+
+    .nav-menu { padding: 0 10px; flex: 1; overflow-y: auto; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13px; margin-bottom: 2px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      user-select: none;
+    }
+    .nav-item i { font-size: 18px; flex-shrink: 0; }
+    .nav-item:hover { background: var(--surface-2); color: var(--text-primary); }
+    .nav-item.active { background: var(--accent-bg); color: var(--accent-text); font-weight: 500; }
+
+    .sidebar-footer {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent-bg); color: var(--accent-text);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px; flex-shrink: 0;
+    }
+
+    .user-name { font-size: 12px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+
+    /* ========== MAIN CONTENT ========== */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column;
+    }
+
+    /* ========== TOPBAR ========== */
+    .topbar {
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 20px;
+      position: sticky; top: 0; z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .topbar-search { flex: 1; max-width: 420px; position: relative; }
+    .topbar-search i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 16px; pointer-events: none; }
+    .topbar-search input { padding-left: 34px; background: var(--surface-2); border-color: transparent; }
+    .topbar-search input:focus { background: white; border-color: var(--accent); }
+
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .icon-btn {
+      width: 34px; height: 34px;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid transparent;
+    }
+    .icon-btn:hover { background: var(--surface-2); }
+    .icon-btn i { font-size: 18px; }
+
+    /* ========== PAGE CONTENT ========== */
+    .page { padding: 20px; flex: 1; }
+
+    /* ========== GREETING ========== */
+    .greeting { margin-bottom: 18px; }
+    .greeting h1 { font-size: 17px; font-weight: 600; }
+    .greeting p  { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ========== STATS ========== */
+    .section-eyebrow { font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex; align-items: center; gap: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 22px;
+    }
+    .stat-icon.blue  { background: var(--accent-bg); color: var(--accent); }
+    .stat-icon.green { background: var(--green-bg);  color: var(--green);  }
+
+    .stat-label { font-size: 12px; color: var(--text-muted); }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+    .stat-unit  { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+
+    /* ========== ACTION ROW ========== */
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+
+    .action-big {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 13.5px; font-weight: 500;
+      display: flex; align-items: center; gap: 7px;
+      box-shadow: var(--shadow-sm);
+    }
+    .action-big i { font-size: 18px; }
+    .action-big.blue  { background: var(--accent); color: white; }
+    .action-big.blue:hover  { background: var(--accent-dark); }
+    .action-big.green { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
+    .action-big.green:hover { background: #dcfce7; }
+
+    /* ========== RIWAYAT ========== */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
+    .section-title  { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .section-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .search-field { position: relative; margin-bottom: 0; }
+    .search-field i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 15px; pointer-events: none; }
+    .search-field input { padding-left: 32px; }
+
+    .filter-bar { display: flex; border-bottom: 1px solid var(--border); }
+
+    .filter-tab {
+      border: none; background: transparent;
+      color: var(--text-secondary); font-size: 13px; font-weight: 500;
+      padding: 8px 14px 9px; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .15s;
+    }
+    .filter-tab:hover { color: var(--text-primary); }
+    .filter-tab.active { color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow: hidden; overflow-x: auto;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .riwayat-wrapper { margin-top: 10px; }
+    .riwayat-top {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 10px 12px 0;
+      border-bottom: none;
+    }
+
+    .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 460px; }
+
+    .data-table thead th {
+      padding: 10px 12px;
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: var(--text-muted); background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+
+    .data-table tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    .data-table tbody tr:last-child { border-bottom: none; }
+    .data-table tbody tr:hover { background: var(--surface-2); }
+
+    .data-table tbody td {
+      padding: 11px 12px; font-size: 12.5px;
+      color: var(--text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 9px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge.masuk  { background: var(--accent-bg); color: var(--accent-text); }
+    .badge.keluar { background: var(--green-bg);  color: var(--green-text);  }
+
+    .tbl-btn {
+      width: 28px; height: 28px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px; background: transparent; border: none;
+      color: var(--text-muted); cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .tbl-btn.edit:hover { background: var(--accent-bg); color: var(--accent); }
+    .tbl-btn.del:hover  { background: var(--red-bg);    color: var(--red);    }
+    .tbl-btn i { font-size: 15px; }
+
+    /* ========== LOADING / EMPTY STATE ========== */
+    .state-row td {
+      text-align: center; padding: 28px 12px;
+      color: var(--text-muted); font-size: 13px;
+    }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      display: inline-block; vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ========== MODAL OVERLAY ========== */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 1000;
+      display: none; align-items: flex-end; justify-content: center;
+      padding: 0;
+    }
+    .overlay.open { display: flex; }
+
+    .sheet {
+      background: white; width: 100%; max-width: 500px;
+      border-radius: 20px 20px 0 0;
+      max-height: 94vh; overflow-y: auto;
+      padding: 22px 20px 30px;
+    }
+
+    @media (min-width: 640px) {
+      .overlay { align-items: center; padding: 20px; }
+      .sheet { border-radius: 16px; max-height: 90vh; }
+    }
+
+    .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .sheet-title  { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+
+    .close-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--surface-2); color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      border: none; cursor: pointer; font-size: 16px; flex-shrink: 0;
+    }
+    .close-btn:hover { background: var(--border-strong); }
+
+    /* ========== FORM INSIDE MODAL ========== */
+    .form-tab-bar {
+      display: flex; background: var(--surface-2);
+      border-radius: var(--radius-sm); padding: 3px; gap: 3px; margin-bottom: 16px;
+    }
+
+    .form-tab {
+      flex: 1; padding: 8px; border-radius: 5px;
+      font-size: 12.5px; font-weight: 500; border: none; cursor: pointer;
+      color: var(--text-muted); background: transparent;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: background .15s, color .15s, box-shadow .15s;
+    }
+    .form-tab i { font-size: 15px; }
+    .form-tab.active { background: white; color: var(--accent); font-weight: 600; box-shadow: var(--shadow-sm); }
+
+    .form-group { margin-bottom: 13px; }
+    .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; }
+    .form-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .input-addon { display: flex; gap: 6px; }
+    .input-addon input { flex: 1; }
+
+    .scan-btn {
+      padding: 9px 12px; border-radius: var(--radius-sm);
+      background: var(--text-primary); color: white;
+      border: none; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center;
+    }
+    .scan-btn i { font-size: 18px; }
+
+    .add-resi-btn {
+      padding: 9px 12px; border-radius: var(--radius-sm);
+      background: var(--surface-2); color: var(--text-primary);
+      border: 1px solid var(--border-strong); cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center;
+    }
+
+    /* ========== KERANJANG RESI ========== */
+    .keranjang-box {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 9px 10px; background: var(--surface-2); min-height: 44px;
+    }
+
+    .resi-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: white; color: var(--text-primary);
+      padding: 3px 9px; border-radius: 999px; font-size: 12px;
+      margin: 2px; border: 1px solid var(--border-strong);
+    }
+
+    .resi-rm { color: var(--red); cursor: pointer; font-size: 14px; line-height: 1; }
+
+    /* ========== AUTOCOMPLETE ========== */
+    .autocomplete-wrap { position: relative; }
+
+    #dropdownSaran {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: white; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow); z-index: 1100;
+      max-height: 200px; overflow-y: auto;
+      display: none;
+    }
+
+    .saran-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+    .saran-item:last-child { border-bottom: none; }
+    .saran-item:hover { background: var(--surface-2); }
+    .saran-name { font-weight: 500; }
+    .saran-sub  { font-size: 11.5px; color: var(--text-muted); }
+
+    /* ========== SCANNER ========== */
+    #reader { width: 100%; display: none; border-radius: var(--radius-sm); border: 2px solid var(--accent); margin-bottom: 10px; overflow: hidden; }
+
+    .close-scanner-btn {
+      width: 100%; margin-bottom: 10px; padding: 8px;
+      background: var(--red-bg); color: var(--red-text);
+      border: 1px solid var(--red-border); border-radius: var(--radius-sm);
+      font-size: 13px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+
+    .open-scanner-btn { /* for dynamically shown/hidden scanner buttons */ }
+
+    /* ========== FORM ACTIONS ========== */
+    .form-actions { display: flex; gap: 8px; margin-top: 18px; }
+    .form-actions .btn { flex: 1; }
+    .form-actions .btn-primary { flex: 2; }
+
+    /* ========== MOBILE BOTTOM NAV ========== */
+    .bottom-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      z-index: 100;
+      padding: 6px 0 max(env(safe-area-inset-bottom, 4px), 4px);
+    }
+
+    .bottom-nav-inner { display: flex; justify-content: space-around; align-items: center; }
+
+    .bot-item {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 4px 10px; color: var(--text-muted); font-size: 10.5px;
+      cursor: pointer; border-radius: var(--radius-sm); border: none; background: none;
+      transition: color .15s;
+    }
+    .bot-item i { font-size: 21px; }
+    .bot-item.active { color: var(--accent); }
+
+    .fab {
+      width: 50px; height: 50px; border-radius: 50%;
+      background: var(--accent); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(37,99,235,.38);
+      border: none; cursor: pointer; margin-top: -18px;
+    }
+    .fab:hover { background: var(--accent-dark); }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      .sidebar      { transform: translateX(-100%); }
+      .main-content { margin-left: 0; padding-bottom: 74px; }
+      .bottom-nav   { display: block; }
+      .topbar       { padding: 0 14px; }
+      .page         { padding: 14px; }
+      .topbar-keluar-text { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid  { gap: 8px; }
+      .action-row  { gap: 8px; }
+      .stat-value  { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     LOGIN SCREEN
+============================================================ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo"><i class="ti ti-package"></i></div>
+    <div class="login-title">Bolang Paket</div>
+    <div class="login-sub">Sistem Manajemen Paket</div>
+
+    <div id="login-error"></div>
+
+    <div id="g_id_onload"
+         data-client_id="1044744704622-meh55ul191hi8d049mu1231ce4tomoq8.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin"
+         data-type="standard" data-size="large" data-theme="outline"
+         data-text="sign_in_with" data-shape="rectangular"
+         data-logo_alignment="left"
+         style="display:flex; justify-content:center;">
+    </div>
+
+    <div id="pin-section">
+      <p class="pin-label">
+        Halo, <strong id="email-display"></strong><br>
+        Masukkan PIN akses kamu:
+      </p>
+      <div class="form-group">
+        <input type="password" id="user-pin"
+               placeholder="● ● ● ● ● ●"
+               maxlength="6" inputmode="numeric"
+               style="text-align:center; letter-spacing:10px; font-size:22px; font-weight:600;"
+               onkeydown="if(event.key==='Enter') verifikasiAkses()">
+      </div>
+      <button class="btn btn-primary btn-full" id="btnVerifikasi" onclick="verifikasiAkses()">
+        <i class="ti ti-login"></i> Masuk ke Sistem
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     MAIN APP
+============================================================ -->
+<div id="main-app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="ti ti-package"></i></div>
+      <div class="logo-text">Packet Manager</div>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="nav-item active" id="nav-dashboard">
+        <i class="ti ti-layout-dashboard"></i>Dashboard
+      </div>
+      <div class="nav-item" onclick="setNavActive('nav-masuk'); setFilter('masuk');">
+        <i class="ti ti-package"></i>Paket masuk
+      </div>
+      <div class="nav-item" id="nav-masuk" style="display:none;"></div><!-- anchor only -->
+      <div class="nav-item" onclick="setNavActive('nav-keluar'); setFilter('keluar');">
+        <i class="ti ti-truck-delivery"></i>Paket keluar
+      </div>
+      <div class="nav-item" id="nav-keluar" style="display:none;"></div>
+      <div class="nav-item" onclick="bukaModalLaporan()">
+        <i class="ti ti-file-description"></i>Memo / laporan
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-avatar" id="sidebarAvatar">S</div>
+      <div style="min-width:0; flex:1;">
+        <div class="user-name" id="user-display">User</div>
+        <div class="user-role">Admin</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-search">
+        <i class="ti ti-search"></i>
+        <input type="text" id="inputCariTopbar" placeholder="Cari paket, resi, atau pemilik…"
+               oninput="sinkronSearch(this.value)">
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" onclick="refresh()" title="Refresh"><i class="ti ti-refresh"></i></button>
+        <button class="btn btn-danger" onclick="handleLogout()">
+          <i class="ti ti-logout"></i>
+          <span class="topbar-keluar-text">Keluar</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- PAGE -->
+    <main class="page">
+
+      <!-- GREETING -->
+      <div class="greeting">
+        <h1>Halo, <span id="greeting-name">User</span> 👋</h1>
+        <p>Selamat datang kembali di Packet Manager</p>
+      </div>
+
+      <!-- STATS -->
+      <div class="section-eyebrow">Ringkasan hari ini</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="ti ti-package"></i></div>
+          <div>
+            <div class="stat-label">Paket masuk</div>
+            <div class="stat-value">
+              <span id="statMasuk"><span class="spinner"></span></span>
+              <span class="stat-unit" id="statMasukUnit"></span>
+            </div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="ti ti-truck-delivery"></i></div>
+          <div>
+            <div class="stat-label">Paket keluar</div>
+            <div class="stat-value">
+              <span id="statKeluar"><span class="spinner"></span></span>
+              <span class="stat-unit" id="statKeluarUnit"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="action-row">
+        <button class="action-big blue" onclick="showForm()">
+          <i class="ti ti-plus"></i>Tambah data
+        </button>
+        <button class="action-big green" onclick="bukaModalLaporan()">
+          <i class="ti ti-report"></i>Buat laporan memo
+        </button>
+      </div>
+
+      <!-- RIWAYAT DATA -->
+      <div class="section-header">
+        <div class="section-title">Riwayat data terakhir</div>
+        <div class="section-actions">
+          <button class="btn btn-danger" id="btnHapusMassal" onclick="handleDeleteAll()">
+            <i class="ti ti-trash"></i><span id="hapusLabel">Hapus semua</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="riwayat-wrapper">
+        <!-- Search + Tabs dalam satu card -->
+        <div class="riwayat-top">
+          <div class="search-field" style="margin-bottom:10px;">
+            <i class="ti ti-search"></i>
+            <input type="text" id="inputCariTabel"
+                   placeholder="Cari nama, resi, atau pemilik…"
+                   oninput="sinkronSearch(this.value)">
+          </div>
+          <div class="filter-bar">
+            <button class="filter-tab active" id="fSemua"  onclick="setFilter('semua')">Semua</button>
+            <button class="filter-tab"        id="fMasuk"  onclick="setFilter('masuk')">Paket masuk</button>
+            <button class="filter-tab"        id="fKeluar" onclick="setFilter('keluar')">Paket keluar</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table" id="tabelData">
+            <thead>
+              <tr>
+                <th style="width:36%">Resi / pemilik</th>
+                <th style="width:33%">Nama / keterangan</th>
+                <th style="width:15%">Jenis</th>
+                <th style="width:16%">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tb">
+              <tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="bot-item active" id="botDash" onclick="setNavActive('nav-dashboard'); setFilter('semua');">
+        <i class="ti ti-home"></i>Beranda
+      </button>
+      <button class="bot-item" onclick="setFilter('masuk');">
+        <i class="ti ti-package"></i>Masuk
+      </button>
+      <button class="fab" onclick="showForm()"><i class="ti ti-plus"></i></button>
+      <button class="bot-item" onclick="setFilter('keluar');">
+        <i class="ti ti-truck-delivery"></i>Keluar
+      </button>
+      <button class="bot-item" onclick="bukaModalLaporan()">
+        <i class="ti ti-report"></i>Laporan
+      </button>
+    </div>
+  </nav>
+
+</div><!-- /#main-app -->
+
+
+<!-- ============================================================
+     MODAL: TAMBAH / EDIT DATA
+============================================================ -->
+<div class="overlay" id="modalForm">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="formTitle">Tambah data baru</div>
+      <button class="close-btn" onclick="hideForm()"><i class="ti ti-x"></i></button>
+    </div>
+
+    <!-- Tab Masuk / Keluar -->
+    <div class="form-tab-bar">
+      <button class="form-tab active" id="formTabMasuk" onclick="gantiTabForm('masuk')">
+        <i class="ti ti-package"></i>Masuk
+      </button>
+      <button class="form-tab" id="formTabKeluar" onclick="gantiTabForm('keluar')">
+        <i class="ti ti-truck-delivery"></i>Keluar
+      </button>
+    </div>
+
+    <!-- Scanner (shared) -->
+    <div id="reader"></div>
+    <button id="btnCloseScanner" class="close-scanner-btn" style="display:none;" onclick="tutupScanner()">
+      <i class="ti ti-x"></i>Tutup Scanner
+    </button>
+
+    <!-- ---- FORM MASUK ---- -->
+    <div id="area-masuk">
+      <form id="formMasuk" onsubmit="event.preventDefault(); kirimData('masuk');">
+        <input type="hidden" name="rowId" id="rowMasuk">
+
+        <div class="form-group">
+          <label class="form-label">Nomor Resi <span style="color:var(--red);">*</span></label>
+          <div class="input-addon">
+            <input type="text" id="resi" name="resi" placeholder="Scan atau ketik nomor resi" required>
+            <button type="button" class="scan-btn open-scanner-btn" onclick="bukaScanner('masuk')" title="Scan barcode">
+              <i class="ti ti-scan"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nama / Alamat</label>
+          <input type="text" id="alamatMasuk" name="alamatMasuk" placeholder="Nama pemilik atau alamat tujuan">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Jumlah</label>
+          <input type="number" id="jumlahMasuk" name="jumlahMasuk" value="1" min="1">
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="hideForm()">Batal</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveMasuk">
+            <i class="ti ti-device-floppy"></i>Simpan
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ---- FORM KELUAR ---- -->
+    <div id="area-keluar" style="display:none;">
+      <form id="formKeluar" onsubmit="event.preventDefault(); kirimData('keluar');">
+        <input type="hidden" name="rowId" id="rowKeluar">
+
+        <div class="form-group">
+          <label class="form-label">Pemilik Paket <span style="color:var(--red);">*</span></label>
+          <input type="text" id="pemilik" name="pemilik" placeholder="Nama pemilik paket" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Alamat</label>
+          <input type="text" id="alamatKeluar" name="alamatKeluar" placeholder="Alamat pemilik">
+        </div>
+
+        <div class="form-group autocomplete-wrap">
+          <label class="form-label">Nama Pengambil <span style="color:var(--red);">*</span></label>
+          <input type="text" id="pengambil" name="pengambil"
+                 placeholder="Ketik nama pengambil…" autocomplete="off"
+                 oninput="cariSaranNama()" required>
+          <div id="dropdownSaran"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">No. Telepon</label>
+          <input type="text" id="notlp" name="notlp" placeholder="08xxxxxxxxxx"
+                 inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Daftar Resi</label>
+          <div class="keranjang-box" id="keranjangResiContainer">
+            <span style="color:var(--text-muted); font-size:12px;">Belum ada resi ditambahkan</span>
+          </div>
+          <div class="input-addon" style="margin-top:7px;">
+            <input type="text" id="inputManualResi" placeholder="Scan / ketik resi…">
+            <button type="button" class="scan-btn open-scanner-btn" onclick="bukaScanner('keluar')" title="Scan barcode">
+              <i class="ti ti-scan"></i>
+            </button>
+            <button type="button" class="add-resi-btn" onclick="tambahKeKeranjang()" title="Tambah">
+              <i class="ti ti-plus"></i>
+            </button>
+          </div>
+          <input type="hidden" id="daftarResi" name="daftarResi">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Jml FnB</label>
+            <input type="number" id="fnb" name="jumlahFnb" placeholder="0" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jml Paket</label>
+            <input type="number" id="paket" name="jumlahPaket" placeholder="0" min="0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Disposal</label>
+          <input type="text" id="disposal" name="disposal" placeholder="Keterangan disposal">
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="hideForm()">Batal</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveKeluar">
+            <i class="ti ti-device-floppy"></i>Simpan
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div><!-- /#modalForm -->
+
+
+<!-- ============================================================
+     MODAL: LAPORAN MEMO
+============================================================ -->
+<div class="overlay" id="modalLaporan">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">
+        <i class="ti ti-file-description" style="font-size:18px; vertical-align:middle; color:var(--green); margin-right:5px;"></i>
+        Buat Laporan Memo
+      </div>
+      <button class="close-btn" onclick="tutupModalLaporan()"><i class="ti ti-x"></i></button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Nomor Urut Memo <span style="color:var(--red);">*</span></label>
+      <input type="number" id="memo_no" placeholder="Contoh: 027">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Jumlah Surat (Manual) <span style="color:var(--red);">*</span></label>
+      <input type="number" id="memo_surat" placeholder="Masukkan jumlah surat hari ini">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Petugas Piket <span style="color:var(--red);">*</span></label>
+      <input type="text" id="memo_petugas" placeholder="Nama petugas yang bertugas">
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
+
+    <div class="form-group">
+      <label class="form-label">
+        <i class="ti ti-camera" style="vertical-align:middle; color:var(--accent);"></i>
+        Foto Eviden 1 – Kegiatan
+      </label>
+      <input type="file" id="memo_foto1" accept="image/*">
+    </div>
+    <div class="form-group">
+      <label class="form-label">
+        <i class="ti ti-camera" style="vertical-align:middle; color:var(--accent);"></i>
+        Foto Eviden 2 – Serah Terima
+      </label>
+      <input type="file" id="memo_foto2" accept="image/*">
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="tutupModalLaporan()">Batal</button>
+      <button class="btn btn-success" id="btnGenerate" onclick="prosesGenerateReport()">
+        <i class="ti ti-send"></i>Kirim Laporan
+      </button>
+    </div>
+  </div>
+</div><!-- /#modalLaporan -->
+
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+<script>
+  /* ── CONFIG ─────────────────────────────────────────────────── */
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnGLtkXKJvk5OgBlf1jatir_8GGRkbB4jwTM1PgztoGieZekILQG-DaMH3HsIvSy3ArQ/exec";
+
+  /* ── STATE ──────────────────────────────────────────────────── */
+  let userEmailAktif = "";
+  let memoriLokal    = {};
+  let formMode       = 'masuk';   // mode di dalam form
+  let filterMode     = 'semua';   // filter tabel
+  let listDataMasuk  = [];
+  let listDataKeluar = [];
+  let keranjangResi  = [];
+  let isScanning     = false;
+  let scanner;
+
+  /* ── AUTH ───────────────────────────────────────────────────── */
+  function handleCredentialResponse(response) {
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    userEmailAktif = payload.email;
+    document.getElementById('email-display').innerText = userEmailAktif;
+    document.querySelector('.g_id_signin').style.display = 'none';
+    document.getElementById('pin-section').style.display = 'block';
+  }
+
+  async function verifikasiAkses() {
+    const pin    = document.getElementById('user-pin').value;
+    const errEl  = document.getElementById('login-error');
+    const btn    = document.getElementById('btnVerifikasi');
+    if (!pin) return;
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner"></span>Memverifikasi…';
+    errEl.style.display = 'none';
+    try {
+      const res    = await fetch(`${SCRIPT_URL}?action=checkAuth&email=${userEmailAktif}&pin=${pin}`);
+      const result = await res.json();
+      if (result.status === "SUCCESS") {
+        localStorage.setItem('isLoggedInDev',  'true');
+        localStorage.setItem('userEmailDev',   userEmailAktif);
+        checkAuth();
+      } else {
+        errEl.innerText     = "Akses ditolak! Email tidak terdaftar atau PIN salah.";
+        errEl.style.display = 'block';
+        btn.disabled        = false;
+        btn.innerHTML       = '<i class="ti ti-login"></i> Masuk ke Sistem';
+      }
+    } catch (e) {
+      errEl.innerText     = "Kesalahan koneksi ke server.";
+      errEl.style.display = 'block';
+      btn.disabled        = false;
+      btn.innerHTML       = '<i class="ti ti-login"></i> Masuk ke Sistem';
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('isLoggedInDev');
+    localStorage.removeItem('userEmailDev');
+    location.reload();
+  }
+
+  function checkAuth() {
+    if (localStorage.getItem('isLoggedInDev') !== 'true') return;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display     = 'block';
+    const email = localStorage.getItem('userEmailDev');
+    document.getElementById('user-display').innerText   = email;
+    document.getElementById('greeting-name').innerText  = email.split('@')[0];
+    document.getElementById('sidebarAvatar').innerText  = email.charAt(0).toUpperCase();
+    muatSemuaData();
+    muatDataKontak();
+  }
+
+  window.onload = checkAuth;
+
+  /* ── DATA LOADING ───────────────────────────────────────────── */
+  function refresh() { muatSemuaData(); }
+
+  async function muatSemuaData() {
+    // tampilkan spinner di stat
+    ['statMasuk','statKeluar'].forEach(id => {
+      document.getElementById(id).innerHTML = '<span class="spinner"></span>';
+    });
+    document.getElementById('statMasukUnit').innerText  = '';
+    document.getElementById('statKeluarUnit').innerText = '';
+    // tampilkan loading di tabel
+    document.getElementById('tb').innerHTML =
+      '<tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>';
+
+    try {
+      const [rMasuk, rKeluar] = await Promise.all([
+        fetch(`${SCRIPT_URL}?type=masuk`).then(r => r.json()),
+        fetch(`${SCRIPT_URL}?type=keluar`).then(r => r.json())
+      ]);
+      listDataMasuk  = rMasuk;
+      listDataKeluar = rKeluar;
+
+      const jmlMasuk  = Math.max(0, listDataMasuk.length  - 1);
+      const jmlKeluar = Math.max(0, listDataKeluar.length - 1);
+
+      document.getElementById('statMasuk').innerText   = jmlMasuk;
+      document.getElementById('statKeluar').innerText  = jmlKeluar;
+      document.getElementById('statMasukUnit').innerText  = jmlMasuk  !== 1 ? ' data' : ' data';
+      document.getElementById('statKeluarUnit').innerText = jmlKeluar !== 1 ? ' data' : ' data';
+
+      renderTabel();
+    } catch (e) {
+      document.getElementById('statMasuk').innerText  = '!';
+      document.getElementById('statKeluar').innerText = '!';
+      document.getElementById('tb').innerHTML =
+        '<tr class="state-row"><td colspan="4">Gagal memuat data. Coba refresh.</td></tr>';
+      console.error(e);
+    }
+  }
+
+  /* legacy alias */
+  function muatData() { muatSemuaData(); }
+
+  /* ── TABEL RENDER ───────────────────────────────────────────── */
+  function renderTabel() {
+    const q = (document.getElementById('inputCariTabel').value || '').toLowerCase().trim();
+    const tbody = document.getElementById('tb');
+    let rows = [];
+
+    if (filterMode === 'semua' || filterMode === 'masuk') {
+      for (let i = listDataMasuk.length - 1; i >= 1; i--) {
+        rows.push({ kode: listDataMasuk[i][0] || '', nama: listDataMasuk[i][1] || '', jenis: 'masuk', idx: i });
+      }
+    }
+    if (filterMode === 'semua' || filterMode === 'keluar') {
+      for (let i = listDataKeluar.length - 1; i >= 1; i--) {
+        rows.push({ kode: listDataKeluar[i][0] || '', nama: listDataKeluar[i][2] || '', jenis: 'keluar', idx: i });
+      }
+    }
+
+    if (q) rows = rows.filter(r =>
+      r.kode.toLowerCase().includes(q) || r.nama.toLowerCase().includes(q)
+    );
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr class="state-row"><td colspan="4">Tidak ada data ditemukan</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td style="font-family:${r.jenis==='masuk'?'monospace':'inherit'}; font-weight:500;"
+            title="${r.kode}">${r.kode || '—'}</td>
+        <td style="color:var(--text-secondary);" title="${r.nama}">${r.nama || '—'}</td>
+        <td><span class="badge ${r.jenis}">${r.jenis==='masuk'?'↓ Masuk':'↑ Keluar'}</span></td>
+        <td>
+          <button class="tbl-btn edit" onclick="editData('${r.jenis}',${r.idx})" title="Edit">
+            <i class="ti ti-edit"></i>
+          </button>
+          <button class="tbl-btn del"  onclick="hapusData('${r.jenis}',${r.idx+1})" title="Hapus">
+            <i class="ti ti-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  /* ── SEARCH & FILTER ────────────────────────────────────────── */
+  function sinkronSearch(val) {
+    document.getElementById('inputCariTopbar').value  = val;
+    document.getElementById('inputCariTabel').value   = val;
+    renderTabel();
+  }
+
+  function setFilter(f) {
+    filterMode = f;
+    ['Semua','Masuk','Keluar'].forEach(x =>
+      document.getElementById('f'+x).classList.remove('active')
+    );
+    document.getElementById('f' + f.charAt(0).toUpperCase() + f.slice(1)).classList.add('active');
+    // update hapus label
+    const label = f === 'semua'  ? 'Hapus semua'
+                : f === 'masuk'  ? 'Hapus semua masuk'
+                :                  'Hapus semua keluar';
+    document.getElementById('hapusLabel').innerText = label;
+    renderTabel();
+  }
+
+  /* ── SIDEBAR NAV ────────────────────────────────────────────── */
+  function setNavActive(id) {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+
+  /* ── FORM MODAL ─────────────────────────────────────────────── */
+  function showForm(edit = false) {
+    document.getElementById('formTitle').innerText = edit ? 'Edit data' : 'Tambah data baru';
+    document.getElementById('modalForm').classList.add('open');
+    gantiTabForm(formMode);
+  }
+
+  function hideForm() {
+    document.getElementById('modalForm').classList.remove('open');
+    document.getElementById('rowMasuk').value  = '';
+    document.getElementById('rowKeluar').value = '';
+    document.getElementById('formMasuk').reset();
+    document.getElementById('formKeluar').reset();
+    keranjangResi = [];
+    renderKeranjang();
+    if (isScanning) tutupScanner();
+  }
+
+  function gantiTabForm(t) {
+    formMode = t;
+    document.getElementById('area-masuk').style.display  = t === 'masuk'  ? 'block' : 'none';
+    document.getElementById('area-keluar').style.display = t === 'keluar' ? 'block' : 'none';
+    ['masuk','keluar'].forEach(tab => {
+      const btn = document.getElementById('formTab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+      btn.classList.toggle('active', tab === t);
+    });
+  }
+
+  /* ── EDIT / HAPUS ───────────────────────────────────────────── */
+  function editData(jenis, idx) {
+    formMode = jenis;
+    const row = jenis === 'masuk' ? listDataMasuk[idx] : listDataKeluar[idx];
+    showForm(true);
+    if (jenis === 'masuk') {
+      document.getElementById('rowMasuk').value    = idx + 1;
+      document.getElementById('resi').value        = row[0] || '';
+      document.getElementById('alamatMasuk').value = row[1] || '';
+      document.getElementById('jumlahMasuk').value = row[2] || 1;
+    } else {
+      document.getElementById('rowKeluar').value    = idx + 1;
+      document.getElementById('pemilik').value      = row[0] || '';
+      document.getElementById('alamatKeluar').value = row[1] || '';
+      document.getElementById('pengambil').value    = row[2] || '';
+      document.getElementById('notlp').value        = row[3] || '';
+      document.getElementById('fnb').value          = row[4] || '';
+      document.getElementById('paket').value        = row[5] || '';
+      document.getElementById('disposal').value     = row[6] || '';
+      if (row[8]) {
+        keranjangResi = row[8].toString().split(',').map(s => s.trim());
+        renderKeranjang();
+      }
+    }
+  }
+
+  function hapusData(jenis, num) {
+    if (!confirm('Hapus data ini?')) return;
+    fetch(`${SCRIPT_URL}?action=delete&type=${jenis}&row=${num}`, { mode: 'no-cors' })
+      .then(() => muatSemuaData());
+  }
+
+  async function handleDeleteAll() {
+    const f = filterMode === 'semua' ? 'masuk' : filterMode; // default masuk jika semua
+    const pin = prompt(`⚠️ Masukkan PIN untuk menghapus SEMUA data Paket ${f.toUpperCase()}:`);
+    if (!pin) return;
+    const btn = document.getElementById('btnHapusMassal');
+    btn.disabled = true;
+    document.getElementById('hapusLabel').innerText = 'Menghapus…';
+    try {
+      const res    = await fetch(`${SCRIPT_URL}?action=deleteAll&targetType=${f}&pin=${pin}`, { method: 'POST' });
+      const result = await res.text();
+      alert(result);
+      muatSemuaData();
+    } catch (e) {
+      alert('Terjadi kesalahan: ' + e.toString());
+    } finally {
+      btn.disabled = false;
+      document.getElementById('hapusLabel').innerText = 'Hapus semua';
+    }
+  }
+
+  /* ── KIRIM DATA ─────────────────────────────────────────────── */
+  function kirimData(t) {
+    const f        = document.getElementById(t === 'masuk' ? 'formMasuk' : 'formKeluar');
+    const rowInput = document.getElementById(t === 'masuk' ? 'rowMasuk'  : 'rowKeluar');
+    const btn      = document.getElementById(t === 'masuk' ? 'btnSaveMasuk' : 'btnSaveKeluar');
+
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner"></span>Menyimpan…';
+
+    const fd = new FormData(f);
+    fd.append('formType', t);
+    if (rowInput.value) {
+      fd.append('action', 'edit');
+      fd.append('row', rowInput.value);
+    }
+
+    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
+      .then(() => {
+        rowInput.value = '';
+        hideForm();
+        muatSemuaData();
+        if (t === 'keluar') muatDataKontak();
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
+      })
+      .catch(e => {
+        alert('Gagal menyimpan: ' + e);
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
+      });
+  }
+
+  /* ── SCANNER ────────────────────────────────────────────────── */
+  function bukaScanner(target) {
+    document.querySelectorAll('.open-scanner-btn').forEach(b => b.style.display = 'none');
+    document.getElementById('reader').style.display          = 'block';
+    document.getElementById('btnCloseScanner').style.display = 'block';
+    if (!isScanning) {
+      scanner = new Html5QrcodeScanner('reader', { fps: 10, qrbox: { width: 250, height: 150 } });
+      scanner.render(text => {
+        if (target === 'masuk') {
+          document.getElementById('resi').value = text;
+          tutupScanner();
+        } else {
+          tambahKeKeranjang(text);
+        }
+      });
+      isScanning = true;
+    }
+  }
+
+  function tutupScanner() {
+    if (scanner) {
+      scanner.clear().then(() => {
+        document.getElementById('reader').style.display          = 'none';
+        document.getElementById('btnCloseScanner').style.display = 'none';
+        document.querySelectorAll('.open-scanner-btn').forEach(b => b.style.display = 'flex');
+        isScanning = false;
+      }).catch(console.error);
+    }
+  }
+
+  /* ── KONTAK & AUTOCOMPLETE ──────────────────────────────────── */
+  async function muatDataKontak() {
+    try {
+      const res = await fetch(`${SCRIPT_URL}?action=getKontak`);
+      memoriLokal = await res.json();
+    } catch (e) { console.log(e); }
+  }
+
+  function cariSaranNama() {
+    const q        = document.getElementById('pengambil').value.toLowerCase().trim();
+    const dropdown = document.getElementById('dropdownSaran');
+    dropdown.innerHTML = '';
+    if (!q) { dropdown.style.display = 'none'; return; }
+
+    let ada = false;
+    for (const nama in memoriLokal) {
+      if (nama.includes(q)) {
+        ada = true;
+        const el   = document.createElement('div');
+        el.className = 'saran-item';
+        const rapi = nama.replace(/\b\w/g, l => l.toUpperCase());
+        el.innerHTML = `<div class="saran-name">${rapi}</div><div class="saran-sub">${memoriLokal[nama]}</div>`;
+        el.onclick = () => {
+          document.getElementById('pengambil').value = rapi;
+          document.getElementById('notlp').value     = memoriLokal[nama];
+          dropdown.style.display = 'none';
+        };
+        dropdown.appendChild(el);
+      }
+    }
+    dropdown.style.display = ada ? 'block' : 'none';
+  }
+
+  // tutup dropdown saat klik di luar
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.autocomplete-wrap'))
+      document.getElementById('dropdownSaran').style.display = 'none';
+  });
+
+  /* ── KERANJANG RESI ─────────────────────────────────────────── */
+  function tambahKeKeranjang(valScanned) {
+    const inputEl   = document.getElementById('inputManualResi');
+    const resiBaru  = (valScanned || inputEl.value).trim();
+    if (!resiBaru) return false;
+    if (keranjangResi.some(r => r.toLowerCase() === resiBaru.toLowerCase())) {
+      const ori = inputEl.value;
+      inputEl.value = '⚠️ Sudah ada!';
+      setTimeout(() => { inputEl.value = ''; }, 800);
+      return false;
+    }
+    keranjangResi.push(resiBaru);
+    renderKeranjang();
+    inputEl.value = '';
+    return true;
+  }
+
+  function renderKeranjang() {
+    const box = document.getElementById('keranjangResiContainer');
+    if (!keranjangResi.length) {
+      box.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">Belum ada resi ditambahkan</span>';
+    } else {
+      box.innerHTML = keranjangResi.map((r, i) =>
+        `<span class="resi-badge">${r}
+           <span class="resi-rm" onclick="keranjangResi.splice(${i},1);renderKeranjang();">✕</span>
+         </span>`
+      ).join('');
+    }
+    document.getElementById('daftarResi').value = keranjangResi.join(', ');
+  }
+
+  /* ── MODAL LAPORAN ──────────────────────────────────────────── */
+  function bukaModalLaporan()  { document.getElementById('modalLaporan').classList.add('open'); }
+  function tutupModalLaporan() { document.getElementById('modalLaporan').classList.remove('open'); }
+
+  async function prosesGenerateReport() {
+    const btn        = document.getElementById('btnGenerate');
+    const memo_no    = document.getElementById('memo_no').value;
+    const memo_surat = document.getElementById('memo_surat').value;
+    const memo_pg    = document.getElementById('memo_petugas').value;
+    const f1         = document.getElementById('memo_foto1').files[0];
+    const f2         = document.getElementById('memo_foto2').files[0];
+
+    if (!memo_no || !memo_surat || !memo_pg) {
+      alert('Nomor memo, jumlah surat, dan nama petugas wajib diisi!');
+      return;
+    }
+
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner"></span>Mengirim…';
+
+    const toBase64 = file => new Promise((res, rej) => {
+      const rd = new FileReader();
+      rd.readAsDataURL(file);
+      rd.onload  = () => res(rd.result.split(',')[1]);
+      rd.onerror = rej;
+    });
+
+    try {
+      const b64_1 = f1 ? await toBase64(f1) : '';
+      const b64_2 = f2 ? await toBase64(f2) : '';
+      const fd    = new URLSearchParams();
+      fd.append('action',         'generateReport');
+      fd.append('no_urut',        memo_no);
+      fd.append('jml_surat',      memo_surat);
+      fd.append('petugas_piket',  memo_pg);
+      fd.append('eviden1',        b64_1);
+      fd.append('eviden2',        b64_2);
+
+      const res = await fetch(SCRIPT_URL, { method: 'POST', body: fd });
+      const url = await res.text();
+      const a   = document.createElement('a');
+      a.href = url; a.target = '_blank';
+      a.download = `Laporan_Piket_${memo_no}.docx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+      alert('Laporan berhasil dibuat!');
+      tutupModalLaporan();
+    } catch (e) {
+      alert('Gagal membuat laporan: ' + e.toString());
+    } finally {
+      btn.disabled  = false;
+      btn.innerHTML = '<i class="ti ti-send"></i>Kirim Laporan';
+    }
+  }
+
+  /* ── CLOSE OVERLAY ON BACKDROP CLICK ───────────────────────── */
+  document.querySelectorAll('.overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) {
+        overlay.classList.remove('open');
+        if (overlay.id === 'modalForm') hideForm();
+      }
+    });
+  });
+</script>
+</body>
+</html>
