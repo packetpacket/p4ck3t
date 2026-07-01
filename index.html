@@ -1132,10 +1132,12 @@
   }
 
   /* ── SEARCH & FILTER ────────────────────────────────────────── */
+  let searchTimeout;
   function sinkronSearch(val) {
-    document.getElementById('inputCariTopbar').value  = val;
-    document.getElementById('inputCariTabel').value   = val;
-    renderTabel();
+    document.getElementById('inputCariTopbar').value = val;
+    document.getElementById('inputCariTabel').value  = val;
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => renderTabel(), 150);
   }
 
   function setFilter(f) {
