@@ -1513,6 +1513,42 @@
   });
 
   /* ── EXPORT EXCEL ───────────────────────────────────────────── */
+
+  // Header default (dipakai jika baris header dari sheet sumber kosong/tidak ada)
+  const DEFAULT_HEADER_MASUK  = ['Nomor Resi', 'Alamat', 'Jumlah', 'Jam'];
+  const DEFAULT_HEADER_KELUAR = ['Pemilik Paket', 'Alamat', 'Pengambil', 'No. Tlp', 'Jumlah FnB', 'Jumlah Paket', 'Disposal', 'Jam', 'Nomor Resi'];
+
+  function buatSheetDenganStyle(headers, rows) {
+    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Style header (background biru, text putih)
+    const headerStyle = {
+      fill: { fgColor: { rgb: "2563EB" } },
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      alignment: { horizontal: "center", vertical: "center" }
+    };
+    for (let c = 0; c < headers.length; c++) {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c });
+      if (ws[cellRef]) ws[cellRef].s = headerStyle;
+    }
+
+    // Lebar kolom otomatis menyesuaikan isi terpanjang (min 8, max 40)
+    ws['!cols'] = headers.map((h, c) => {
+      let maxLen = String(h || '').length;
+      for (const row of rows) {
+        const val = row[c] == null ? '' : String(row[c]);
+        if (val.length > maxLen) maxLen = val.length;
+      }
+      return { wch: Math.min(Math.max(maxLen + 2, 8), 40) };
+    });
+
+    // Bekukan baris header
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+    return ws;
+  }
+
   async function exportToExcel() {
     const btn = document.querySelector('[onclick="exportToExcel()"]');
     const originalLabel = btn.querySelector('#exportLabel')?.innerText || 'Export Excel';
@@ -1525,73 +1561,61 @@
       await ensureXLSX();
       btn.querySelector('#exportLabel').innerText = 'Memproses…';
 
-      let dataToExport = [];
-      
-      // Siapkan header
-      const headers = ['No', 'Jenis', 'Resi/Pemilik', 'Nama/Keterangan'];
-      
-      // Tambah data masuk
-      let no = 1;
-      for (let i = 1; i < listDataMasuk.length; i++) {
-        if (filterMode === 'semua' || filterMode === 'masuk') {
-          dataToExport.push([
-            no++,
-            'Masuk',
-            listDataMasuk[i][0] || '',
-            listDataMasuk[i][1] || ''
-          ]);
-        }
-      }
-      
-      // Tambah data keluar
-      for (let i = 1; i < listDataKeluar.length; i++) {
-        if (filterMode === 'semua' || filterMode === 'keluar') {
-          dataToExport.push([
-            no++,
-            'Keluar',
-            listDataKeluar[i][0] || '',
-            listDataKeluar[i][2] || ''
-          ]);
-        }
-      }
-
-      // Filter berdasarkan search query
       const q = (document.getElementById('inputCariTabel').value || '').toLowerCase().trim();
-      if (q) {
-        dataToExport = dataToExport.filter(row =>
-          row[2].toLowerCase().includes(q) || 
-          row[3].toLowerCase().includes(q)
-        );
-      }
-
-      // Buat worksheet dengan data
-      const wsData = [headers, ...dataToExport];
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-      // Style header (background biru, text putih)
-      const headerStyle = {
-        fill: { fgColor: { rgb: "2563EB" } },
-        font: { bold: true, color: { rgb: "FFFFFF" } },
-        alignment: { horizontal: "center", vertical: "center" }
-      };
-
-      // Apply header style
-      for (let i = 0; i < headers.length; i++) {
-        const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
-        ws[cellRef].s = headerStyle;
-      }
-
-      // Set column width
-      ws['!cols'] = [
-        { wch: 5 },   // No
-        { wch: 10 },  // Jenis
-        { wch: 25 },  // Resi/Pemilik
-        { wch: 30 }   // Nama/Keterangan
-      ];
-
-      // Buat workbook
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Data Paket");
+      let adaSheet = false;
+
+      // ── SHEET PAKET MASUK (semua kolom, semua data) ──
+      if (filterMode === 'semua' || filterMode === 'masuk') {
+        const headerMasuk = (listDataMasuk[0] && listDataMasuk[0].length ? listDataMasuk[0] : DEFAULT_HEADER_MASUK);
+        let rowsMasuk = [];
+        for (let i = 1; i < listDataMasuk.length; i++) {
+          const row = listDataMasuk[i];
+          if (!row) continue;
+          const kode = String(row[0] || '').trim();
+          const nama = String(row[1] || '').trim();
+          if (!kode && !nama) continue; // skip baris kosong
+          rowsMasuk.push(row.map(v => v == null ? '' : v));
+        }
+        if (q) {
+          rowsMasuk = rowsMasuk.filter(row =>
+            row.some(v => String(v).toLowerCase().includes(q))
+          );
+        }
+        if (rowsMasuk.length) {
+          const wsMasuk = buatSheetDenganStyle(headerMasuk, rowsMasuk);
+          XLSX.utils.book_append_sheet(wb, wsMasuk, "Paket Masuk");
+          adaSheet = true;
+        }
+      }
+
+      // ── SHEET PAKET KELUAR (semua kolom, semua data) ──
+      if (filterMode === 'semua' || filterMode === 'keluar') {
+        const headerKeluar = (listDataKeluar[0] && listDataKeluar[0].length ? listDataKeluar[0] : DEFAULT_HEADER_KELUAR);
+        let rowsKeluar = [];
+        for (let i = 1; i < listDataKeluar.length; i++) {
+          const row = listDataKeluar[i];
+          if (!row) continue;
+          const kode = String(row[0] || '').trim();
+          const nama = String(row[2] || '').trim();
+          if (!kode && !nama) continue; // skip baris kosong
+          rowsKeluar.push(row.map(v => v == null ? '' : v));
+        }
+        if (q) {
+          rowsKeluar = rowsKeluar.filter(row =>
+            row.some(v => String(v).toLowerCase().includes(q))
+          );
+        }
+        if (rowsKeluar.length) {
+          const wsKeluar = buatSheetDenganStyle(headerKeluar, rowsKeluar);
+          XLSX.utils.book_append_sheet(wb, wsKeluar, "Paket Keluar");
+          adaSheet = true;
+        }
+      }
+
+      if (!adaSheet) {
+        throw new Error('Tidak ada data untuk diexport.');
+      }
 
       // Download
       const filename = `Paket_${new Date().toISOString().slice(0,10)}.xlsx`;
