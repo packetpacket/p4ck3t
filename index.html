@@ -1154,26 +1154,35 @@
     let rows = [];
 
     if (filterMode === 'semua') {
-      // Untuk "Semua": ambil SEMUA masuk dan keluar, campur, sort by row number descending
+      // Untuk "Semua": ambil SEMUA masuk dan keluar, campur, sort by TIMESTAMP (Jam), bukan row number
       
-      // Kumpulkan data masuk dengan row index
+      // Kumpulkan data masuk dengan timestamp (Jam di index [3])
       for (let i = 1; i < listDataMasuk.length; i++) {
         const kode = String(listDataMasuk[i][0] || '').trim();
         const nama = String(listDataMasuk[i][1] || '').trim();
         if (!kode && !nama) continue; // skip empty rows
-        rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk', rowNum: i });
+        const jam = listDataMasuk[i][3] || ''; // Kolom D: Jam
+        rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk', timestamp: jam, rowNum: i });
       }
 
-      // Kumpulkan data keluar dengan row index
+      // Kumpulkan data keluar dengan timestamp (Jam di index [7])
       for (let i = 1; i < listDataKeluar.length; i++) {
         const kode = String(listDataKeluar[i][0] || '').trim();
         const nama = String(listDataKeluar[i][2] || '').trim();
         if (!kode && !nama) continue; // skip empty rows
-        rows.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar', rowNum: i });
+        const jam = listDataKeluar[i][7] || ''; // Kolom H: Jam
+        rows.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar', timestamp: jam, rowNum: i });
       }
 
-      // Sort SEMUA data berdasarkan row number descending (terbaru duluan)
-      rows.sort((a, b) => b.rowNum - a.rowNum);
+      // Sort SEMUA data berdasarkan TIMESTAMP descending (terbaru duluan)
+      rows.sort((a, b) => {
+        // Jika kedua punya timestamp, sort by timestamp
+        if (a.timestamp && b.timestamp) {
+          return b.timestamp.localeCompare(a.timestamp); // descending (terbaru duluan)
+        }
+        // Fallback ke row number jika timestamp kosong
+        return b.rowNum - a.rowNum;
+      });
 
     } else if (filterMode === 'masuk') {
       // Ambil data masuk saja (dari belakang ke depan = terbaru duluan)
