@@ -1153,18 +1153,45 @@
     const tbody = document.getElementById('tb');
     let rows = [];
 
-    // Ambil data masuk (dari belakang ke depan, sehingga data terbaru muncul duluan)
-    if (filterMode === 'semua' || filterMode === 'masuk') {
+    if (filterMode === 'semua') {
+      // Untuk "Semua": ambil masuk dan keluar secara terpisah dulu (reversed)
+      let rowsMasuk = [];
+      let rowsKeluar = [];
+
+      // Kumpulkan data masuk (dari belakang ke depan)
+      for (let i = listDataMasuk.length - 1; i >= 1; i--) {
+        const kode = String(listDataMasuk[i][0] || '').trim();
+        const nama = String(listDataMasuk[i][1] || '').trim();
+        if (!kode && !nama) continue; // skip empty rows
+        rowsMasuk.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk' });
+      }
+
+      // Kumpulkan data keluar (dari belakang ke depan)
+      for (let i = listDataKeluar.length - 1; i >= 1; i--) {
+        const kode = String(listDataKeluar[i][0] || '').trim();
+        const nama = String(listDataKeluar[i][2] || '').trim();
+        if (!kode && !nama) continue; // skip empty rows
+        rowsKeluar.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar' });
+      }
+
+      // Interleave masuk dan keluar (campur berdasarkan yang paling baru)
+      // Alternatif: masuk[0], keluar[0], masuk[1], keluar[1], dst
+      const maxLen = Math.max(rowsMasuk.length, rowsKeluar.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < rowsMasuk.length) rows.push(rowsMasuk[i]);
+        if (i < rowsKeluar.length) rows.push(rowsKeluar[i]);
+      }
+
+    } else if (filterMode === 'masuk') {
+      // Ambil data masuk saja
       for (let i = listDataMasuk.length - 1; i >= 1; i--) {
         const kode = String(listDataMasuk[i][0] || '').trim();
         const nama = String(listDataMasuk[i][1] || '').trim();
         if (!kode && !nama) continue; // skip empty rows
         rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk' });
       }
-    }
-
-    // Ambil data keluar (dari belakang ke depan, sehingga data terbaru muncul duluan)
-    if (filterMode === 'semua' || filterMode === 'keluar') {
+    } else if (filterMode === 'keluar') {
+      // Ambil data keluar saja
       for (let i = listDataKeluar.length - 1; i >= 1; i--) {
         const kode = String(listDataKeluar[i][0] || '').trim();
         const nama = String(listDataKeluar[i][2] || '').trim();
