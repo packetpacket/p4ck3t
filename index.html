@@ -1578,25 +1578,7 @@
     return ws;
   }
 
-  /* ── FORMAT TIMESTAMP ──────────────────────────────────── */
-  function formatTimestampToTime(timestamp) {
-    if (!timestamp) return '';
-    try {
-      // Parse timestamp ISO: 1899-12-30T05:26:07.000Z
-      const date = new Date(timestamp);
-      if (isNaN(date.getTime())) return timestamp; // Jika invalid, return as-is
-      
-      const hours = String(date.getUTCHours()).padStart(2, '0');
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-      const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-      
-      return `${hours}:${minutes}:${seconds}`;
-    } catch (e) {
-      return timestamp; // Jika error, return original value
-    }
-  }
-
-  /* ── EXPORT EXCEL ───────────────────────────────────────────── */
+  async function exportToExcel() {
     const btn = document.querySelector('[onclick="exportToExcel()"]');
     const originalLabel = btn.querySelector('#exportLabel')?.innerText || 'Export Excel';
     btn.disabled = true;
@@ -1616,21 +1598,14 @@
       if (filterMode === 'semua' || filterMode === 'masuk') {
         const headerMasuk = (listDataMasuk[0] && listDataMasuk[0].length ? listDataMasuk[0] : DEFAULT_HEADER_MASUK);
         let rowsMasuk = [];
-        // Iterasi dari depan ke belakang (ascending) - nomor 1 adalah data paling awal
-        for (let i = 1; i < listDataMasuk.length; i++) {
+        // Iterasi dari belakang ke depan agar data terbaru muncul duluan
+        for (let i = listDataMasuk.length - 1; i >= 1; i--) {
           const row = listDataMasuk[i];
           if (!row) continue;
           const kode = String(row[0] || '').trim();
           const nama = String(row[1] || '').trim();
           if (!kode && !nama) continue; // skip baris kosong
-          // Format Jam (kolom D, index 3) dari timestamp ISO menjadi HH:MM:SS
-          const rowFormatted = row.map((v, idx) => {
-            if (idx === 3 && v) { // Kolom D (Jam) - index 3
-              return formatTimestampToTime(v);
-            }
-            return v == null ? '' : v;
-          });
-          rowsMasuk.push(rowFormatted);
+          rowsMasuk.push(row.map(v => v == null ? '' : v));
         }
         if (q) {
           rowsMasuk = rowsMasuk.filter(row =>
@@ -1648,21 +1623,14 @@
       if (filterMode === 'semua' || filterMode === 'keluar') {
         const headerKeluar = (listDataKeluar[0] && listDataKeluar[0].length ? listDataKeluar[0] : DEFAULT_HEADER_KELUAR);
         let rowsKeluar = [];
-        // Iterasi dari depan ke belakang (ascending) - nomor 1 adalah data paling awal
-        for (let i = 1; i < listDataKeluar.length; i++) {
+        // Iterasi dari belakang ke depan agar data terbaru muncul duluan
+        for (let i = listDataKeluar.length - 1; i >= 1; i--) {
           const row = listDataKeluar[i];
           if (!row) continue;
           const kode = String(row[0] || '').trim();
           const nama = String(row[2] || '').trim();
           if (!kode && !nama) continue; // skip baris kosong
-          // Format Jam (kolom H, index 7) dari timestamp ISO menjadi HH:MM:SS
-          const rowFormatted = row.map((v, idx) => {
-            if (idx === 7 && v) { // Kolom H (Jam) - index 7
-              return formatTimestampToTime(v);
-            }
-            return v == null ? '' : v;
-          });
-          rowsKeluar.push(rowFormatted);
+          rowsKeluar.push(row.map(v => v == null ? '' : v));
         }
         if (q) {
           rowsKeluar = rowsKeluar.filter(row =>
