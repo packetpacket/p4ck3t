@@ -1153,9 +1153,9 @@
     const tbody = document.getElementById('tb');
     let rows = [];
 
-    // Ambil data masuk
+    // Ambil data masuk (dari belakang ke depan, sehingga data terbaru muncul duluan)
     if (filterMode === 'semua' || filterMode === 'masuk') {
-      for (let i = 1; i < listDataMasuk.length; i++) {
+      for (let i = listDataMasuk.length - 1; i >= 1; i--) {
         const kode = String(listDataMasuk[i][0] || '').trim();
         const nama = String(listDataMasuk[i][1] || '').trim();
         if (!kode && !nama) continue; // skip empty rows
@@ -1163,9 +1163,9 @@
       }
     }
 
-    // Ambil data keluar
+    // Ambil data keluar (dari belakang ke depan, sehingga data terbaru muncul duluan)
     if (filterMode === 'semua' || filterMode === 'keluar') {
-      for (let i = 1; i < listDataKeluar.length; i++) {
+      for (let i = listDataKeluar.length - 1; i >= 1; i--) {
         const kode = String(listDataKeluar[i][0] || '').trim();
         const nama = String(listDataKeluar[i][2] || '').trim();
         if (!kode && !nama) continue; // skip empty rows
@@ -1569,7 +1569,8 @@
       if (filterMode === 'semua' || filterMode === 'masuk') {
         const headerMasuk = (listDataMasuk[0] && listDataMasuk[0].length ? listDataMasuk[0] : DEFAULT_HEADER_MASUK);
         let rowsMasuk = [];
-        for (let i = 1; i < listDataMasuk.length; i++) {
+        // Iterasi dari belakang ke depan agar data terbaru muncul duluan
+        for (let i = listDataMasuk.length - 1; i >= 1; i--) {
           const row = listDataMasuk[i];
           if (!row) continue;
           const kode = String(row[0] || '').trim();
@@ -1593,7 +1594,8 @@
       if (filterMode === 'semua' || filterMode === 'keluar') {
         const headerKeluar = (listDataKeluar[0] && listDataKeluar[0].length ? listDataKeluar[0] : DEFAULT_HEADER_KELUAR);
         let rowsKeluar = [];
-        for (let i = 1; i < listDataKeluar.length; i++) {
+        // Iterasi dari belakang ke depan agar data terbaru muncul duluan
+        for (let i = listDataKeluar.length - 1; i >= 1; i--) {
           const row = listDataKeluar[i];
           if (!row) continue;
           const kode = String(row[0] || '').trim();
