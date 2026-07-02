@@ -1154,36 +1154,29 @@
     let rows = [];
 
     if (filterMode === 'semua') {
-      // Untuk "Semua": ambil masuk dan keluar secara terpisah dulu (reversed)
-      let rowsMasuk = [];
-      let rowsKeluar = [];
-
-      // Kumpulkan data masuk (dari belakang ke depan)
-      for (let i = listDataMasuk.length - 1; i >= 1; i--) {
+      // Untuk "Semua": ambil SEMUA masuk dan keluar, campur, sort by row number descending
+      
+      // Kumpulkan data masuk dengan row index
+      for (let i = 1; i < listDataMasuk.length; i++) {
         const kode = String(listDataMasuk[i][0] || '').trim();
         const nama = String(listDataMasuk[i][1] || '').trim();
         if (!kode && !nama) continue; // skip empty rows
-        rowsMasuk.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk' });
+        rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk', rowNum: i });
       }
 
-      // Kumpulkan data keluar (dari belakang ke depan)
-      for (let i = listDataKeluar.length - 1; i >= 1; i--) {
+      // Kumpulkan data keluar dengan row index
+      for (let i = 1; i < listDataKeluar.length; i++) {
         const kode = String(listDataKeluar[i][0] || '').trim();
         const nama = String(listDataKeluar[i][2] || '').trim();
         if (!kode && !nama) continue; // skip empty rows
-        rowsKeluar.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar' });
+        rows.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar', rowNum: i });
       }
 
-      // Interleave masuk dan keluar (campur berdasarkan yang paling baru)
-      // Alternatif: masuk[0], keluar[0], masuk[1], keluar[1], dst
-      const maxLen = Math.max(rowsMasuk.length, rowsKeluar.length);
-      for (let i = 0; i < maxLen; i++) {
-        if (i < rowsMasuk.length) rows.push(rowsMasuk[i]);
-        if (i < rowsKeluar.length) rows.push(rowsKeluar[i]);
-      }
+      // Sort SEMUA data berdasarkan row number descending (terbaru duluan)
+      rows.sort((a, b) => b.rowNum - a.rowNum);
 
     } else if (filterMode === 'masuk') {
-      // Ambil data masuk saja
+      // Ambil data masuk saja (dari belakang ke depan = terbaru duluan)
       for (let i = listDataMasuk.length - 1; i >= 1; i--) {
         const kode = String(listDataMasuk[i][0] || '').trim();
         const nama = String(listDataMasuk[i][1] || '').trim();
@@ -1191,7 +1184,7 @@
         rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk' });
       }
     } else if (filterMode === 'keluar') {
-      // Ambil data keluar saja
+      // Ambil data keluar saja (dari belakang ke depan = terbaru duluan)
       for (let i = listDataKeluar.length - 1; i >= 1; i--) {
         const kode = String(listDataKeluar[i][0] || '').trim();
         const nama = String(listDataKeluar[i][2] || '').trim();
