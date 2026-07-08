@@ -62,6 +62,11 @@
       --red-border:      #fca5a5;
       --red-text:        #b91c1c;
 
+      --amber:           #d97706;
+      --amber-bg:        #fffbeb;
+      --amber-border:    #fde68a;
+      --amber-text:      #92400e;
+
       --sidebar-w: 210px;
       --topbar-h:  56px;
       --radius:    10px;
@@ -424,6 +429,50 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ========== ERROR STATE (gagal memuat data) ========== */
+    .state-row-error td { padding: 0; }
+
+    .error-box { padding: 30px 20px; text-align: center; }
+
+    .error-title {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      font-size: 14px; font-weight: 600; color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .error-title i { font-size: 19px; color: var(--red); }
+
+    .error-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+
+    .error-reasons {
+      list-style: none;
+      display: inline-flex; flex-direction: column; gap: 4px;
+      margin: 0 auto 18px; text-align: left;
+    }
+    .error-reasons li {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 12.5px; color: var(--text-secondary);
+      padding: 7px 12px; border-radius: var(--radius-sm);
+      transition: background .15s, color .15s;
+    }
+    .error-reasons li i { font-size: 16px; color: var(--text-muted); flex-shrink: 0; width: 18px; text-align: center; }
+    .error-reasons li.reason-active {
+      background: var(--red-bg); color: var(--red-text); font-weight: 600;
+    }
+    .error-reasons li.reason-active i { color: var(--red); }
+
+    /* ========== OFFLINE BANNER ========== */
+    .offline-banner {
+      display: none; align-items: center; gap: 9px;
+      background: var(--amber-bg); color: var(--amber-text);
+      border: 1px solid var(--amber-border);
+      border-radius: var(--radius);
+      padding: 10px 14px; font-size: 12.5px; font-weight: 500;
+      margin-bottom: 16px;
+    }
+    .offline-banner.show { display: flex; }
+    .offline-banner i { font-size: 17px; color: var(--amber); flex-shrink: 0; }
+    .offline-banner strong { font-weight: 700; }
+
     /* ========== MODAL OVERLAY ========== */
     .overlay {
       position: fixed; inset: 0;
@@ -696,6 +745,12 @@
 
     <!-- PAGE -->
     <main class="page">
+
+      <!-- OFFLINE BANNER -->
+      <div class="offline-banner" id="offlineBanner">
+        <i class="ti ti-cloud-off"></i>
+        <span>Data terakhir diperbarui pukul <strong id="offlineTime">--.--</strong> (mode offline)</span>
+      </div>
 
       <!-- GREETING -->
       <div class="greeting">
@@ -1005,6 +1060,8 @@
 <script>
   /* ── CONFIG ─────────────────────────────────────────────────── */
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnGLtkXKJvk5OgBlf1jatir_8GGRkbB4jwTM1PgztoGieZekILQG-DaMH3HsIvSy3ArQ/exec";
+  const TIMEOUT_MS = 12000; // 12 detik — cukup toleran untuk koneksi 4G yang lambat
+  const CACHE_KEY  = 'bolangPaketCache';
 
   /* ── STATE ──────────────────────────────────────────────────── */
   let userEmailAktif = "";
@@ -1075,10 +1132,99 @@
 
   window.onload = checkAuth;
 
+  /* ── FETCH DENGAN TIMEOUT ──────────────────────────────────────
+     Supaya request tidak menggantung tanpa batas di koneksi jelek,
+     tapi tetap diberi cukup waktu (12 detik) sebelum dianggap gagal. */
+  async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /* ── CACHE OFFLINE (localStorage) ──────────────────────────────
+     Setiap kali data berhasil dimuat, disimpan sebagai cadangan.
+     Kalau nanti gagal memuat (internet jelek), data cadangan ini
+     yang ditampilkan supaya halaman tidak kosong. */
+  function simpanCacheData(dataMasuk, dataKeluar) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        masuk:  dataMasuk,
+        keluar: dataKeluar,
+        waktu:  Date.now()
+      }));
+    } catch (e) { /* storage penuh atau diblokir browser, abaikan saja */ }
+  }
+
+  function ambilCacheData() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function formatWaktuOffline(ms) {
+    const d     = new Date(ms);
+    const jam   = String(d.getHours()).padStart(2, '0');
+    const menit = String(d.getMinutes()).padStart(2, '0');
+    return `${jam}.${menit}`;
+  }
+
+  function showOfflineBanner(ms) {
+    document.getElementById('offlineTime').innerText = formatWaktuOffline(ms);
+    document.getElementById('offlineBanner').classList.add('show');
+  }
+
+  function hideOfflineBanner() {
+    document.getElementById('offlineBanner').classList.remove('show');
+  }
+
+  /* ── HITUNG & TAMPILKAN RINGKASAN ──────────────────────────────
+     Dipakai baik untuk data hasil fetch langsung, maupun data
+     cadangan (cache) saat mode offline. */
+  function tampilkanStats(dataMasuk, dataKeluar) {
+    // Paket masuk = total kuantitas jumlahMasuk dari setiap baris data masuk,
+    // bukan sekadar jumlah baris/transaksi. Kolom index 2 = jumlahMasuk.
+    let jmlMasuk = 0;
+    for (let i = 1; i < dataMasuk.length; i++) {
+      const row = dataMasuk[i];
+      if (!row) continue;
+      const kode = String(row[0] || '').trim();
+      const nama = String(row[1] || '').trim();
+      if (!kode && !nama) continue; // skip baris kosong
+      jmlMasuk += parseInt(row[2], 10) || 1; // default 1 jika kolom kosong
+    }
+
+    // Paket keluar = jumlah paket + jumlah makanan (FnB) dari setiap baris data keluar,
+    // bukan sekadar jumlah baris/transaksi. Kolom index 4 = jumlahFnb, index 5 = jumlahPaket.
+    let totalPaketKeluar = 0;
+    let totalFnbKeluar   = 0;
+    for (let i = 1; i < dataKeluar.length; i++) {
+      const row = dataKeluar[i];
+      if (!row) continue;
+      totalFnbKeluar   += parseInt(row[4], 10) || 0;
+      totalPaketKeluar += parseInt(row[5], 10) || 0;
+    }
+    const jmlKeluar = totalPaketKeluar + totalFnbKeluar;
+
+    document.getElementById('statMasuk').innerText   = jmlMasuk;
+    document.getElementById('statKeluar').innerText  = jmlKeluar;
+    document.getElementById('statMasukUnit').innerText  = ' data';
+    document.getElementById('statKeluarUnit').innerText = ' data';
+    document.getElementById('statMasukBreakdown').innerText =
+      `dari ${Math.max(0, dataMasuk.length - 1)} transaksi`;
+    document.getElementById('statKeluarBreakdown').innerText =
+      `${totalPaketKeluar} paket • ${totalFnbKeluar} makanan`;
+  }
+
   /* ── DATA LOADING ───────────────────────────────────────────── */
   function refresh() { muatSemuaData(); }
 
   async function muatSemuaData() {
+    hideOfflineBanner();
     // tampilkan spinner di stat
     ['statMasuk','statKeluar'].forEach(id => {
       document.getElementById(id).innerHTML = '<span class="spinner"></span>';
@@ -1093,55 +1239,68 @@
 
     try {
       const [rMasuk, rKeluar] = await Promise.all([
-        fetch(`${SCRIPT_URL}?type=masuk`).then(r => r.json()),
-        fetch(`${SCRIPT_URL}?type=keluar`).then(r => r.json())
+        fetchWithTimeout(`${SCRIPT_URL}?type=masuk`).then(r => r.json()),
+        fetchWithTimeout(`${SCRIPT_URL}?type=keluar`).then(r => r.json())
       ]);
       listDataMasuk  = rMasuk;
       listDataKeluar = rKeluar;
 
-      // Paket masuk = total kuantitas jumlahMasuk dari setiap baris data masuk,
-      // bukan sekadar jumlah baris/transaksi. Kolom index 2 = jumlahMasuk.
-      let jmlMasuk = 0;
-      for (let i = 1; i < listDataMasuk.length; i++) {
-        const row = listDataMasuk[i];
-        if (!row) continue;
-        const kode = String(row[0] || '').trim();
-        const nama = String(row[1] || '').trim();
-        if (!kode && !nama) continue; // skip baris kosong
-        jmlMasuk += parseInt(row[2], 10) || 1; // default 1 jika kolom kosong
-      }
-
-      // Paket keluar = jumlah paket + jumlah makanan (FnB) dari setiap baris data keluar,
-      // bukan sekadar jumlah baris/transaksi. Kolom index 4 = jumlahFnb, index 5 = jumlahPaket.
-      let totalPaketKeluar = 0;
-      let totalFnbKeluar   = 0;
-      for (let i = 1; i < listDataKeluar.length; i++) {
-        const row = listDataKeluar[i];
-        if (!row) continue;
-        totalFnbKeluar   += parseInt(row[4], 10) || 0;
-        totalPaketKeluar += parseInt(row[5], 10) || 0;
-      }
-      const jmlKeluar = totalPaketKeluar + totalFnbKeluar;
-
-      document.getElementById('statMasuk').innerText   = jmlMasuk;
-      document.getElementById('statKeluar').innerText  = jmlKeluar;
-      document.getElementById('statMasukUnit').innerText  = jmlMasuk  !== 1 ? ' data' : ' data';
-      document.getElementById('statKeluarUnit').innerText = jmlKeluar !== 1 ? ' data' : ' data';
-      document.getElementById('statMasukBreakdown').innerText =
-        `dari ${Math.max(0, listDataMasuk.length - 1)} transaksi`;
-      document.getElementById('statKeluarBreakdown').innerText =
-        `${totalPaketKeluar} paket • ${totalFnbKeluar} makanan`;
-
+      tampilkanStats(listDataMasuk, listDataKeluar);
+      simpanCacheData(listDataMasuk, listDataKeluar);
       renderTabel();
     } catch (e) {
-      document.getElementById('statMasuk').innerText  = '!';
-      document.getElementById('statKeluar').innerText = '!';
-      document.getElementById('statMasukBreakdown').innerText = '';
-      document.getElementById('statKeluarBreakdown').innerText = '';
-      document.getElementById('tb').innerHTML =
-        '<tr class="state-row"><td colspan="4">Gagal memuat data. Coba refresh.</td></tr>';
       console.error(e);
+      handleLoadError(e);
     }
+  }
+
+  /* ── PENANGANAN GAGAL MUAT ──────────────────────────────────────
+     1) Kalau ada cache dari load sebelumnya → tampilkan itu dulu
+        dan beri tahu pengguna ini "mode offline".
+     2) Kalau tidak ada cache sama sekali → tampilkan kotak error
+        lengkap dengan kemungkinan penyebab + tombol Coba Lagi. */
+  function handleLoadError(err) {
+    const cache = ambilCacheData();
+
+    if (cache && Array.isArray(cache.masuk) && Array.isArray(cache.keluar)) {
+      listDataMasuk  = cache.masuk;
+      listDataKeluar = cache.keluar;
+      tampilkanStats(listDataMasuk, listDataKeluar);
+      renderTabel();
+      showOfflineBanner(cache.waktu);
+    } else {
+      document.getElementById('statMasuk').innerText  = '–';
+      document.getElementById('statKeluar').innerText = '–';
+      document.getElementById('statMasukBreakdown').innerText  = '';
+      document.getElementById('statKeluarBreakdown').innerText = '';
+      tampilkanErrorBox(err);
+    }
+  }
+
+  function tampilkanErrorBox(err) {
+    // Deteksi ringan penyebab paling mungkin, supaya salah satu alasan
+    // di bawah bisa disorot (bukan sekadar daftar generik).
+    const offline    = (typeof navigator !== 'undefined' && navigator.onLine === false);
+    const timeoutErr = err && err.name === 'AbortError';
+
+    document.getElementById('tb').innerHTML = `
+      <tr class="state-row-error">
+        <td colspan="4">
+          <div class="error-box">
+            <div class="error-title"><i class="ti ti-alert-triangle"></i>Gagal memuat data</div>
+            <p class="error-desc">Kemungkinan penyebabnya:</p>
+            <ul class="error-reasons">
+              <li class="${offline ? 'reason-active' : ''}"><i class="ti ti-wifi-off"></i>Tidak ada koneksi internet</li>
+              <li class="${!offline && timeoutErr ? 'reason-active' : ''}"><i class="ti ti-clock"></i>Koneksi terlalu lambat</li>
+              <li class="${!offline && !timeoutErr ? 'reason-active' : ''}"><i class="ti ti-cloud"></i>Server Google sedang sibuk</li>
+            </ul>
+            <button class="btn btn-primary" onclick="muatSemuaData()">
+              <i class="ti ti-refresh"></i>Coba Lagi
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
   }
 
   /* legacy alias */
@@ -1409,7 +1568,7 @@
   /* ── KONTAK & AUTOCOMPLETE ──────────────────────────────────── */
   async function muatDataKontak() {
     try {
-      const res = await fetch(`${SCRIPT_URL}?action=getKontak`);
+      const res = await fetchWithTimeout(`${SCRIPT_URL}?action=getKontak`);
       memoriLokal = await res.json();
     } catch (e) { console.log(e); }
   }
@@ -1541,7 +1700,7 @@
     });
   });
 
-  /* ── EXPORT EXCEL ───────────────────────────────────────────── */
+  /* ── EXPORT EXCEL: helper & konfigurasi ────────────────────── */
 
   // Header default (dipakai jika baris header dari sheet sumber kosong/tidak ada)
   const DEFAULT_HEADER_MASUK  = ['Nomor Resi', 'Alamat', 'Jumlah', 'Jam'];
@@ -1578,6 +1737,25 @@
     return ws;
   }
 
+  /* ── FORMAT TIMESTAMP ──────────────────────────────────── */
+  function formatTimestampToTime(timestamp) {
+    if (!timestamp) return '';
+    try {
+      // Parse timestamp ISO: 1899-12-30T05:26:07.000Z
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) return timestamp; // Jika invalid, return as-is
+      
+      const hours = String(date.getUTCHours()).padStart(2, '0');
+      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+      
+      return `${hours}:${minutes}:${seconds}`;
+    } catch (e) {
+      return timestamp; // Jika error, return original value
+    }
+  }
+
+  /* ── EXPORT EXCEL ───────────────────────────────────────────── */
   async function exportToExcel() {
     const btn = document.querySelector('[onclick="exportToExcel()"]');
     const originalLabel = btn.querySelector('#exportLabel')?.innerText || 'Export Excel';
@@ -1598,14 +1776,21 @@
       if (filterMode === 'semua' || filterMode === 'masuk') {
         const headerMasuk = (listDataMasuk[0] && listDataMasuk[0].length ? listDataMasuk[0] : DEFAULT_HEADER_MASUK);
         let rowsMasuk = [];
-        // Iterasi dari belakang ke depan agar data terbaru muncul duluan
-        for (let i = listDataMasuk.length - 1; i >= 1; i--) {
+        // Iterasi dari depan ke belakang (ascending) - nomor 1 adalah data paling awal
+        for (let i = 1; i < listDataMasuk.length; i++) {
           const row = listDataMasuk[i];
           if (!row) continue;
           const kode = String(row[0] || '').trim();
           const nama = String(row[1] || '').trim();
           if (!kode && !nama) continue; // skip baris kosong
-          rowsMasuk.push(row.map(v => v == null ? '' : v));
+          // Format Jam (kolom D, index 3) dari timestamp ISO menjadi HH:MM:SS
+          const rowFormatted = row.map((v, idx) => {
+            if (idx === 3 && v) { // Kolom D (Jam) - index 3
+              return formatTimestampToTime(v);
+            }
+            return v == null ? '' : v;
+          });
+          rowsMasuk.push(rowFormatted);
         }
         if (q) {
           rowsMasuk = rowsMasuk.filter(row =>
@@ -1623,14 +1808,21 @@
       if (filterMode === 'semua' || filterMode === 'keluar') {
         const headerKeluar = (listDataKeluar[0] && listDataKeluar[0].length ? listDataKeluar[0] : DEFAULT_HEADER_KELUAR);
         let rowsKeluar = [];
-        // Iterasi dari belakang ke depan agar data terbaru muncul duluan
-        for (let i = listDataKeluar.length - 1; i >= 1; i--) {
+        // Iterasi dari depan ke belakang (ascending) - nomor 1 adalah data paling awal
+        for (let i = 1; i < listDataKeluar.length; i++) {
           const row = listDataKeluar[i];
           if (!row) continue;
           const kode = String(row[0] || '').trim();
           const nama = String(row[2] || '').trim();
           if (!kode && !nama) continue; // skip baris kosong
-          rowsKeluar.push(row.map(v => v == null ? '' : v));
+          // Format Jam (kolom H, index 7) dari timestamp ISO menjadi HH:MM:SS
+          const rowFormatted = row.map((v, idx) => {
+            if (idx === 7 && v) { // Kolom H (Jam) - index 7
+              return formatTimestampToTime(v);
+            }
+            return v == null ? '' : v;
+          });
+          rowsKeluar.push(rowFormatted);
         }
         if (q) {
           rowsKeluar = rowsKeluar.filter(row =>
