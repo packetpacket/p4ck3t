@@ -1737,18 +1737,30 @@
     return ws;
   }
 
-  /* ── FORMAT TIMESTAMP ──────────────────────────────────── */
+  /* ── FORMAT TIMESTAMP ──────────────────────────────────────────
+     Kolom "Jam" di Google Sheets adalah nilai waktu dengan tanggal
+     referensi 30 Des 1899. Saat Apps Script mengonversinya ke UTC,
+     mesin V8 memakai zona waktu HISTORIS Asia/Jakarta untuk tanggal
+     setua itu (+07:07:12, offset "Batavia" sebelum tahun 1924),
+     bukan +07:00 yang berlaku sekarang. Makanya jam mentah dari API
+     selalu lebih maju 7 jam 7 menit 12 detik dibanding yang tertulis
+     di spreadsheet. Koreksi ini menyelaraskannya kembali. */
   function formatTimestampToTime(timestamp) {
     if (!timestamp) return '';
     try {
       // Parse timestamp ISO: 1899-12-30T05:26:07.000Z
       const date = new Date(timestamp);
       if (isNaN(date.getTime())) return timestamp; // Jika invalid, return as-is
-      
-      const hours = String(date.getUTCHours()).padStart(2, '0');
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-      const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-      
+
+      const KOREKSI_DETIK = 7 * 3600 + 7 * 60 + 12; // 7 jam 7 menit 12 detik = 25632 detik
+
+      let totalDetik = date.getUTCHours() * 3600 + date.getUTCMinutes() * 60 + date.getUTCSeconds();
+      totalDetik = ((totalDetik - KOREKSI_DETIK) % 86400 + 86400) % 86400; // wrap aman, hindari hasil negatif
+
+      const hours   = String(Math.floor(totalDetik / 3600)).padStart(2, '0');
+      const minutes = String(Math.floor((totalDetik % 3600) / 60)).padStart(2, '0');
+      const seconds = String(totalDetik % 60).padStart(2, '0');
+
       return `${hours}:${minutes}:${seconds}`;
     } catch (e) {
       return timestamp; // Jika error, return original value
