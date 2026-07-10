@@ -1126,11 +1126,99 @@
     document.getElementById('user-display').innerText   = email;
     document.getElementById('greeting-name').innerText  = email.split('@')[0];
     document.getElementById('sidebarAvatar').innerText  = email.charAt(0).toUpperCase();
+
+    // Kalau sudah tau offline sebelum fetch dimulai, langsung tampilkan
+    // cache (kalau ada) dan banner — tidak perlu menunggu timeout 12 detik
+    if (!navigator.onLine) {
+      sedangOffline = true; // sinkronkan flag agar auto-check & event konsisten
+      const cache = ambilCacheData();
+      if (cache && Array.isArray(cache.masuk) && Array.isArray(cache.keluar)) {
+        listDataMasuk  = cache.masuk;
+        listDataKeluar = cache.keluar;
+        tampilkanStats(listDataMasuk, listDataKeluar);
+        renderTabel();
+        showOfflineBanner(cache.waktu);
+        return; // skip fetch; auto-check berkala yang akan nanti refresh saat online
+      }
+    }
+
     muatSemuaData();
     muatDataKontak();
   }
 
-  window.onload = checkAuth;
+  window.onload = () => {
+    checkAuth();
+    daftarEventKoneksi();
+  };
+
+  /* ── AUTO-DETEKSI PERUBAHAN KONEKSI + AUTO-CHECK BERKALA ───────
+     - Event offline/online  → reaksi instan saat jaringan putus/nyambung
+     - Ping tiap 30 detik   → tangkap kasus "WiFi nyambung tapi internet mati"
+       yang tidak terdeteksi event browser (karena navigator.onLine masih true)
+     - Ping memakai request HEAD kecil ke endpoint /ping sehingga tidak
+       membebani server; timeout hanya 5 detik agar cepat ketahuan           */
+  let autoCheckInterval = null;
+  let sedangOffline     = false;
+
+  function daftarEventKoneksi() {
+    // ── Event bawaan browser (cepat, tapi hanya level perangkat) ──
+    window.addEventListener('offline', () => {
+      tandaiOffline();
+    });
+
+    window.addEventListener('online', () => {
+      // Browser bilang nyambung — verifikasi dulu dengan ping sebelum
+      // langsung refresh, supaya tidak terlalu optimistis
+      pingServer().then(ok => {
+        if (ok) tandaiOnline();
+        // kalau ping masih gagal, biarkan auto-check yang nangani
+      });
+    });
+
+    // ── Auto-check ping tiap 30 detik ─────────────────────────────
+    // Dimulai setelah halaman siap; berhenti otomatis kalau tab/window ditutup
+    autoCheckInterval = setInterval(async () => {
+      const ok = await pingServer();
+      if (!ok && !sedangOffline) {
+        tandaiOffline();
+      } else if (ok && sedangOffline) {
+        tandaiOnline();
+      }
+    }, 30_000); // 30 detik
+  }
+
+  /* Kirim HEAD request kecil ke server; return true kalau berhasil */
+  async function pingServer() {
+    try {
+      await fetchWithTimeout(
+        `${SCRIPT_URL}?action=ping`,
+        { method: 'HEAD' },
+        5000   // timeout lebih pendek khusus untuk ping — 5 detik cukup
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /* Tandai kondisi offline: tampilkan banner cache kalau ada */
+  function tandaiOffline() {
+    if (sedangOffline) return; // sudah offline, tidak perlu repeat
+    sedangOffline = true;
+    const cache = ambilCacheData();
+    if (cache) {
+      showOfflineBanner(cache.waktu);
+    }
+  }
+
+  /* Tandai kondisi kembali online: sembunyikan banner, refresh data */
+  function tandaiOnline() {
+    if (!sedangOffline) return; // sudah online, tidak perlu repeat
+    sedangOffline = false;
+    hideOfflineBanner();
+    muatSemuaData();
+    muatDataKontak();
+  }
 
   /* ── FETCH DENGAN TIMEOUT ──────────────────────────────────────
      Supaya request tidak menggantung tanpa batas di koneksi jelek,
@@ -1181,26 +1269,6 @@
   function hideOfflineBanner() {
     document.getElementById('offlineBanner').classList.remove('show');
   }
-
-  /* ── DETEKSI OTOMATIS ONLINE/OFFLINE ─────────────────────────────
-     Event bawaan browser ini terpicu SAAT ITU JUGA ketika perangkat
-     kehilangan koneksi (wifi/data mati, mode pesawat, kabel LAN
-     lepas, dsb) — jadi banner "mode offline" langsung tampil tanpa
-     perlu pengguna menekan tombol refresh.
-     Catatan: event ini tidak bisa mendeteksi kasus "tersambung ke
-     wifi tapi wifi-nya sendiri tidak ada internet" (mis. router mati
-     tapi perangkat masih terhubung ke jaringannya). Untuk kasus itu,
-     browser tetap menganggap statusnya "online", dan mode offline
-     baru terdeteksi saat percobaan memuat data benar-benar gagal
-     (ditangani oleh handleLoadError di atas). */
-  window.addEventListener('offline', () => {
-    const cache = ambilCacheData();
-    if (cache) showOfflineBanner(cache.waktu);
-  });
-
-  window.addEventListener('online', () => {
-    muatSemuaData(); // koneksi kembali → coba muat ulang data otomatis
-  });
 
   /* ── HITUNG & TAMPILKAN RINGKASAN ──────────────────────────────
      Dipakai baik untuk data hasil fetch langsung, maupun data
