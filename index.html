@@ -1182,6 +1182,26 @@
     document.getElementById('offlineBanner').classList.remove('show');
   }
 
+  /* ── DETEKSI OTOMATIS ONLINE/OFFLINE ─────────────────────────────
+     Event bawaan browser ini terpicu SAAT ITU JUGA ketika perangkat
+     kehilangan koneksi (wifi/data mati, mode pesawat, kabel LAN
+     lepas, dsb) — jadi banner "mode offline" langsung tampil tanpa
+     perlu pengguna menekan tombol refresh.
+     Catatan: event ini tidak bisa mendeteksi kasus "tersambung ke
+     wifi tapi wifi-nya sendiri tidak ada internet" (mis. router mati
+     tapi perangkat masih terhubung ke jaringannya). Untuk kasus itu,
+     browser tetap menganggap statusnya "online", dan mode offline
+     baru terdeteksi saat percobaan memuat data benar-benar gagal
+     (ditangani oleh handleLoadError di atas). */
+  window.addEventListener('offline', () => {
+    const cache = ambilCacheData();
+    if (cache) showOfflineBanner(cache.waktu);
+  });
+
+  window.addEventListener('online', () => {
+    muatSemuaData(); // koneksi kembali → coba muat ulang data otomatis
+  });
+
   /* ── HITUNG & TAMPILKAN RINGKASAN ──────────────────────────────
      Dipakai baik untuk data hasil fetch langsung, maupun data
      cadangan (cache) saat mode offline. */
