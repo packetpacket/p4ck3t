@@ -4,6 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
   <title>Bolang Paket – Sistem Manajemen Paket</title>
+  <!-- PWA -->
+  <meta name="theme-color" content="#2563eb" id="themeColorMeta">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bolang Paket">
+  <meta name="application-name" content="Bolang Paket">
+  <meta name="description" content="Sistem Manajemen Paket">
+  <link rel="manifest" id="pwaManifestLink">
+  <!-- PWA icons inline (SVG data URI — no server needed) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='white'>📦</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%232563eb'/><text x='96' y='130' text-anchor='middle' font-size='110' fill='white'>📦</text></svg>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -74,6 +86,72 @@
       --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
       --shadow:    0 4px 16px rgba(0,0,0,.10);
     }
+
+    /* ========== DARK MODE ========== */
+    html.dark {
+      --bg:              #0f1117;
+      --surface:         #1a1d2e;
+      --surface-2:       #222540;
+      --border:          #2e3250;
+      --border-strong:   #3a3f65;
+
+      --text-primary:    #e8eaf6;
+      --text-secondary:  #9ba3c7;
+      --text-muted:      #5c6490;
+
+      --accent:          #3b82f6;
+      --accent-dark:     #2563eb;
+      --accent-bg:       #1e2a4a;
+      --accent-text:     #93c5fd;
+
+      --green:           #22c55e;
+      --green-bg:        #0f2a1a;
+      --green-border:    #166534;
+      --green-text:      #86efac;
+
+      --red:             #f87171;
+      --red-bg:          #2d1515;
+      --red-border:      #7f1d1d;
+      --red-text:        #fca5a5;
+
+      --amber:           #fbbf24;
+      --amber-bg:        #2d1f0a;
+      --amber-border:    #78350f;
+      --amber-text:      #fde68a;
+
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.30);
+      --shadow:    0 4px 16px rgba(0,0,0,.40);
+    }
+
+    /* Dark mode — input focus */
+    html.dark .topbar-search input:focus { background: var(--surface-2); }
+    html.dark #dropdownSaran { background: var(--surface); }
+    html.dark .resi-badge { background: var(--surface-2); }
+    html.dark .login-card { background: var(--surface); }
+
+    /* Dark mode toggle button */
+    .dark-toggle {
+      width: 34px; height: 34px;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid transparent;
+      cursor: pointer; font-size: 18px;
+      transition: background .15s, color .15s;
+    }
+    .dark-toggle:hover { background: var(--surface-2); }
+
+    /* Dark mode badge indikator otomatis */
+    .dark-auto-badge {
+      font-size: 9px; font-weight: 700;
+      background: var(--amber); color: #fff;
+      border-radius: 3px; padding: 1px 4px;
+      position: absolute; bottom: -2px; right: -2px;
+      line-height: 1.2;
+      pointer-events: none;
+    }
+    .dark-toggle-wrap { position: relative; display: inline-flex; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -624,6 +702,33 @@
     }
     .fab:hover { background: var(--accent-dark); }
 
+    /* ========== PAGINATION ========== */
+    .pagination-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      font-size: 12px; color: var(--text-muted);
+      flex-wrap: wrap; gap: 8px;
+    }
+    .pagination-bar.hidden { display: none; }
+    .pagination-info { white-space: nowrap; }
+    .pagination-controls { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .pg-btn {
+      min-width: 30px; height: 30px; padding: 0 8px;
+      border-radius: 6px; border: 1px solid var(--border-strong);
+      background: var(--surface); color: var(--text-secondary);
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background .12s, color .12s;
+    }
+    .pg-btn:hover:not(:disabled) { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+    .pg-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .pg-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .pg-ellipsis { color: var(--text-muted); padding: 0 4px; }
+
     /* ========== RESPONSIVE ========== */
     @media (max-width: 768px) {
       .sidebar      { transform: translateX(-100%); }
@@ -736,6 +841,13 @@
       </div>
       <div class="topbar-right">
         <button class="icon-btn" onclick="refresh()" title="Refresh"><i class="ti ti-refresh"></i></button>
+        <!-- DARK MODE TOGGLE -->
+        <div class="dark-toggle-wrap" title="Toggle dark mode">
+          <button class="dark-toggle" id="darkToggleBtn" onclick="toggleDarkMode()">
+            <i class="ti ti-moon" id="darkToggleIcon"></i>
+          </button>
+          <span class="dark-auto-badge" id="darkAutoBadge" style="display:none">AUTO</span>
+        </div>
         <button class="btn btn-danger" onclick="handleLogout()">
           <i class="ti ti-logout"></i>
           <span class="topbar-keluar-text">Keluar</span>
@@ -838,6 +950,11 @@
               <tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>
             </tbody>
           </table>
+        </div>
+        <!-- PAGINATION -->
+        <div class="pagination-bar hidden" id="paginationBar">
+          <div class="pagination-info" id="paginationInfo"></div>
+          <div class="pagination-controls" id="paginationControls"></div>
         </div>
       </div>
 
@@ -1394,76 +1511,113 @@
   /* legacy alias */
   function muatData() { muatSemuaData(); }
 
-  /* ── TABEL RENDER ───────────────────────────────────────────── */
-  function renderTabel() {
+  /* ── TABEL RENDER (dengan Pagination 50 baris/halaman) ─────── */
+  const PAGE_SIZE       = 50;     // baris per halaman
+  let   currentPage     = 1;      // halaman aktif saat ini
+  let   allFilteredRows = [];     // cache semua baris setelah filter+search
+
+  function kumpulkanRows() {
     const q = (document.getElementById('inputCariTabel').value || '').toLowerCase().trim();
-    const tbody = document.getElementById('tb');
     let rows = [];
 
     if (filterMode === 'semua') {
-      // Untuk "Semua": ambil SEMUA masuk dan keluar, campur, sort by TIMESTAMP (Jam), bukan row number
-      
-      // Kumpulkan data masuk dengan timestamp (Jam di index [3])
       for (let i = 1; i < listDataMasuk.length; i++) {
         const kode = String(listDataMasuk[i][0] || '').trim();
         const nama = String(listDataMasuk[i][1] || '').trim();
-        if (!kode && !nama) continue; // skip empty rows
-        const jam = listDataMasuk[i][3] || ''; // Kolom D: Jam
+        if (!kode && !nama) continue;
+        const jam = listDataMasuk[i][3] || '';
         rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk', timestamp: jam, rowNum: i });
       }
-
-      // Kumpulkan data keluar dengan timestamp (Jam di index [7])
       for (let i = 1; i < listDataKeluar.length; i++) {
         const kode = String(listDataKeluar[i][0] || '').trim();
         const nama = String(listDataKeluar[i][2] || '').trim();
-        if (!kode && !nama) continue; // skip empty rows
-        const jam = listDataKeluar[i][7] || ''; // Kolom H: Jam
+        if (!kode && !nama) continue;
+        const jam = listDataKeluar[i][7] || '';
         rows.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar', timestamp: jam, rowNum: i });
       }
-
-      // Sort SEMUA data berdasarkan TIMESTAMP descending (terbaru duluan)
       rows.sort((a, b) => {
-        // Jika kedua punya timestamp, sort by timestamp
-        if (a.timestamp && b.timestamp) {
-          return b.timestamp.localeCompare(a.timestamp); // descending (terbaru duluan)
-        }
-        // Fallback ke row number jika timestamp kosong
+        if (a.timestamp && b.timestamp) return b.timestamp.localeCompare(a.timestamp);
         return b.rowNum - a.rowNum;
       });
-
     } else if (filterMode === 'masuk') {
-      // Ambil data masuk saja (dari belakang ke depan = terbaru duluan)
       for (let i = listDataMasuk.length - 1; i >= 1; i--) {
         const kode = String(listDataMasuk[i][0] || '').trim();
         const nama = String(listDataMasuk[i][1] || '').trim();
-        if (!kode && !nama) continue; // skip empty rows
+        if (!kode && !nama) continue;
         rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk' });
       }
     } else if (filterMode === 'keluar') {
-      // Ambil data keluar saja (dari belakang ke depan = terbaru duluan)
       for (let i = listDataKeluar.length - 1; i >= 1; i--) {
         const kode = String(listDataKeluar[i][0] || '').trim();
         const nama = String(listDataKeluar[i][2] || '').trim();
-        if (!kode && !nama) continue; // skip empty rows
+        if (!kode && !nama) continue;
         rows.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar' });
       }
     }
 
-    // Filter berdasarkan search query
     if (q) {
-      rows = rows.filter(r => 
-        r.kode.toLowerCase().includes(q) || 
+      rows = rows.filter(r =>
+        r.kode.toLowerCase().includes(q) ||
         r.nama.toLowerCase().includes(q)
       );
     }
+    return rows;
+  }
 
-    // Render hasil
-    if (!rows.length) {
+  function renderPaginationBar(total, page) {
+    const bar      = document.getElementById('paginationBar');
+    const infoEl   = document.getElementById('paginationInfo');
+    const ctrlEl   = document.getElementById('paginationControls');
+    const totalPage = Math.ceil(total / PAGE_SIZE);
+
+    if (total <= PAGE_SIZE) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+
+    const start = (page - 1) * PAGE_SIZE + 1;
+    const end   = Math.min(page * PAGE_SIZE, total);
+    infoEl.textContent = `${start}–${end} dari ${total} data`;
+
+    // Buat tombol halaman: prev … 1 2 3 … next
+    let html = `<button class="pg-btn" onclick="goToPage(${page-1})" ${page===1?'disabled':''} title="Sebelumnya"><i class="ti ti-chevron-left"></i></button>`;
+
+    const delta = 2; // banyak halaman di kiri-kanan halaman aktif
+    let pages   = new Set([1, totalPage]);
+    for (let p = Math.max(1, page - delta); p <= Math.min(totalPage, page + delta); p++) pages.add(p);
+    pages = [...pages].sort((a,b) => a-b);
+
+    let prev = 0;
+    for (const p of pages) {
+      if (prev && p - prev > 1) html += `<span class="pg-ellipsis">…</span>`;
+      html += `<button class="pg-btn${p===page?' active':''}" onclick="goToPage(${p})">${p}</button>`;
+      prev = p;
+    }
+
+    html += `<button class="pg-btn" onclick="goToPage(${page+1})" ${page===totalPage?'disabled':''} title="Berikutnya"><i class="ti ti-chevron-right"></i></button>`;
+    ctrlEl.innerHTML = html;
+  }
+
+  function goToPage(p) {
+    const totalPage = Math.ceil(allFilteredRows.length / PAGE_SIZE);
+    if (p < 1 || p > totalPage) return;
+    currentPage = p;
+    renderHalamanTabel();
+    // scroll ke atas tabel
+    document.getElementById('tabelData').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderHalamanTabel() {
+    const tbody   = document.getElementById('tb');
+    const total   = allFilteredRows.length;
+    const start   = (currentPage - 1) * PAGE_SIZE;
+    const halaman = allFilteredRows.slice(start, start + PAGE_SIZE);
+
+    if (!halaman.length) {
       tbody.innerHTML = `<tr class="state-row"><td colspan="4">Tidak ada data ditemukan</td></tr>`;
+      document.getElementById('paginationBar').classList.add('hidden');
       return;
     }
 
-    tbody.innerHTML = rows.map(r => `
+    tbody.innerHTML = halaman.map(r => `
       <tr>
         <td style="font-family:${r.jenis==='masuk'?'monospace':'inherit'}; font-weight:500;"
             title="${r.kode}">${r.kode || '—'}</td>
@@ -1479,6 +1633,178 @@
         </td>
       </tr>
     `).join('');
+
+    renderPaginationBar(total, currentPage);
+  }
+
+  function renderTabel() {
+    allFilteredRows = kumpulkanRows();
+    // Reset ke halaman 1 jika filter/search berubah
+    const totalPage = Math.ceil(allFilteredRows.length / PAGE_SIZE);
+    if (currentPage > totalPage) currentPage = 1;
+    renderHalamanTabel();
+  }
+
+  /* ── DARK MODE ─────────────────────────────────────────────────
+     Prioritas: manual override > preferensi sistem > auto jam 18.00
+     - 'dark-mode' di localStorage: 'on' / 'off' / null (belum diset)
+     - Auto mode: aktif kalau belum pernah di-override manual dan
+       jam lokal >= 18:00 atau < 06:00 (dianggap malam)              */
+
+  const DM_KEY = 'darkModePref'; // 'on' | 'off' | null (hapus key = auto)
+  let   darkAutoTimer = null;
+
+  function applyDark(isDark) {
+    document.documentElement.classList.toggle('dark', isDark);
+    const icon = document.getElementById('darkToggleIcon');
+    if (icon) icon.className = isDark ? 'ti ti-sun' : 'ti ti-moon';
+    // ubah theme-color meta agar status bar Android ikut berubah
+    const meta = document.getElementById('themeColorMeta');
+    if (meta) meta.content = isDark ? '#0f1117' : '#2563eb';
+  }
+
+  function isDarkAuto() {
+    // WIB = UTC+7; jam 18.00–05.59 dianggap malam
+    const now   = new Date();
+    const wibH  = (now.getUTCHours() + 7) % 24;
+    return wibH >= 18 || wibH < 6;
+  }
+
+  function initDarkMode() {
+    const pref = localStorage.getItem(DM_KEY);
+    const badge = document.getElementById('darkAutoBadge');
+
+    if (pref === 'on')  { applyDark(true);  if (badge) badge.style.display='none'; }
+    else if (pref === 'off') { applyDark(false); if (badge) badge.style.display='none'; }
+    else {
+      // Mode otomatis (belum ada pref manual)
+      applyDark(isDarkAuto());
+      if (badge) badge.style.display = 'block';
+    }
+
+    // Jadwalkan re-cek setiap menit supaya auto-mode aktif tepat jam 18.00
+    clearInterval(darkAutoTimer);
+    darkAutoTimer = setInterval(() => {
+      const p = localStorage.getItem(DM_KEY);
+      if (!p) {
+        applyDark(isDarkAuto());
+        const b = document.getElementById('darkAutoBadge');
+        if (b) b.style.display = 'block';
+      }
+    }, 60_000); // cek tiap 1 menit
+  }
+
+  function toggleDarkMode() {
+    const isDark   = document.documentElement.classList.contains('dark');
+    const badge    = document.getElementById('darkAutoBadge');
+    const newState = !isDark;
+
+    applyDark(newState);
+    localStorage.setItem(DM_KEY, newState ? 'on' : 'off');
+    if (badge) badge.style.display = 'none'; // simpan manual → nonaktifkan badge AUTO
+
+    // Long-press / double-click reset → tombol ini cukup sekali klik saja
+    // Kalau mau kembali ke auto, user tahan tombol 1 detik
+  }
+
+  // Tahan tombol 1 detik → reset ke mode AUTO
+  let darkHoldTimer = null;
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('darkToggleBtn');
+    if (!btn) return;
+    btn.addEventListener('mousedown', () => {
+      darkHoldTimer = setTimeout(() => {
+        localStorage.removeItem(DM_KEY);
+        initDarkMode();
+        const b = document.getElementById('darkAutoBadge');
+        if (b) { b.style.display = 'block'; }
+      }, 800);
+    });
+    ['mouseup','mouseleave','touchend'].forEach(ev =>
+      btn.addEventListener(ev, () => clearTimeout(darkHoldTimer))
+    );
+  });
+
+  // Inisialisasi dark mode SECEPATNYA (sebelum render DOM selesai juga ok)
+  initDarkMode();
+
+  /* ── PWA — SERVICE WORKER + MANIFEST DINAMIS ──────────────────
+     Manifest dibuat inline via Blob URL supaya tidak butuh file
+     manifest.json terpisah. Service Worker di-register dari blob
+     dengan strategi Cache-First untuk asset utama.               */
+  function initPWA() {
+    // 1) Manifest JSON (Blob URL)
+    const manifest = {
+      name:             "Bolang Paket – Manajemen Paket",
+      short_name:       "Bolang Paket",
+      description:      "Sistem Manajemen Paket",
+      start_url:        location.href,
+      display:          "standalone",
+      orientation:      "portrait-primary",
+      background_color: "#1a1d2e",
+      theme_color:      "#2563eb",
+      icons: [
+        {
+          src:   "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%232563eb'/><text x='96' y='130' text-anchor='middle' font-size='110' fill='white'>📦</text></svg>",
+          sizes: "192x192", type: "image/svg+xml", purpose: "any maskable"
+        },
+        {
+          src:   "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%232563eb'/><text x='256' y='345' text-anchor='middle' font-size='300' fill='white'>📦</text></svg>",
+          sizes: "512x512", type: "image/svg+xml", purpose: "any maskable"
+        }
+      ]
+    };
+    const blob    = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    const blobURL = URL.createObjectURL(blob);
+    const linkEl  = document.getElementById('pwaManifestLink');
+    if (linkEl) linkEl.href = blobURL;
+
+    // 2) Tombol "Install ke Home Screen" — muncul kalau browser support beforeinstallprompt
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      showPWAInstallBtn();
+    });
+    window.addEventListener('appinstalled', () => {
+      hidePWAInstallBtn();
+      deferredPrompt = null;
+    });
+
+    // Expose trigger ke tombol di topbar
+    window._triggerPWAInstall = () => {
+      if (!deferredPrompt) {
+        alert('Untuk install:\n• Chrome/Edge: ketuk ⋮ → "Tambahkan ke layar utama"\n• Safari iOS: ketuk □↑ → "Tambah ke Layar Utama"');
+        return;
+      }
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => { deferredPrompt = null; hidePWAInstallBtn(); });
+    };
+  }
+
+  function showPWAInstallBtn() {
+    let btn = document.getElementById('pwaInstallBtn');
+    if (btn) { btn.style.display = 'inline-flex'; return; }
+    // Buat tombol install baru di topbar-right
+    btn = document.createElement('button');
+    btn.id        = 'pwaInstallBtn';
+    btn.className = 'icon-btn';
+    btn.title     = 'Install ke Home Screen';
+    btn.innerHTML = '<i class="ti ti-device-mobile-down"></i>';
+    btn.onclick   = () => window._triggerPWAInstall();
+    const right = document.querySelector('.topbar-right');
+    if (right) right.insertBefore(btn, right.firstChild);
+  }
+  function hidePWAInstallBtn() {
+    const btn = document.getElementById('pwaInstallBtn');
+    if (btn) btn.style.display = 'none';
+  }
+
+  // Panggil initPWA setelah DOM siap
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPWA);
+  } else {
+    initPWA();
   }
 
   /* ── SEARCH & FILTER ────────────────────────────────────────── */
@@ -1487,11 +1813,15 @@
     document.getElementById('inputCariTopbar').value = val;
     document.getElementById('inputCariTabel').value  = val;
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => renderTabel(), 150);
+    searchTimeout = setTimeout(() => {
+      currentPage = 1; // kembali ke halaman 1 saat search berubah
+      renderTabel();
+    }, 150);
   }
 
   function setFilter(f) {
-    filterMode = f;
+    filterMode  = f;
+    currentPage = 1; // reset ke halaman 1 saat ganti filter
     ['Semua','Masuk','Keluar'].forEach(x =>
       document.getElementById('f'+x).classList.remove('active')
     );
