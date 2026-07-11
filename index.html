@@ -1304,17 +1304,23 @@
     }, 30_000); // 30 detik
   }
 
-  /* Kirim HEAD request kecil ke server; return true kalau berhasil */
+  /* Cek konektivitas jaringan dengan GET no-cors.
+     Kenapa no-cors: HEAD request ke Google Apps Script sering gagal
+     karena CORS preflight, sehingga pingServer selalu return false
+     bahkan saat internet sebenarnya sudah nyambung kembali.
+     Dengan mode:'no-cors', browser tidak melakukan CORS check —
+     kalau fetch resolve (opaque response) = jaringan ada,
+     kalau throw (AbortError / TypeError) = benar-benar offline. */
   async function pingServer() {
     try {
       await fetchWithTimeout(
-        `${SCRIPT_URL}?action=ping`,
-        { method: 'HEAD' },
-        5000   // timeout lebih pendek khusus untuk ping — 5 detik cukup
+        `${SCRIPT_URL}?action=ping&_=${Date.now()}`,
+        { mode: 'no-cors' }, // no-cors: tidak throw karena CORS, hanya throw kalau network mati
+        5000
       );
-      return true;
+      return true;  // fetch resolve = jaringan tersedia
     } catch (e) {
-      return false;
+      return false; // AbortError (timeout) atau TypeError (no network)
     }
   }
 
@@ -1646,84 +1652,68 @@
   }
 
   /* ── DARK MODE ─────────────────────────────────────────────────
-     Prioritas: manual override > preferensi sistem > auto jam 18.00
-     - 'dark-mode' di localStorage: 'on' / 'off' / null (belum diset)
-     - Auto mode: aktif kalau belum pernah di-override manual dan
-       jam lokal >= 18:00 atau < 06:00 (dianggap malam)              */
+     Aturan prioritas:
+     1. Jam 18:00 WIB       → SELALU paksa dark, hapus override manual
+     2. Jam 06:00 WIB       → SELALU paksa light, hapus override manual
+     3. Di antara jam itu   → ikuti override manual kalau ada
+     4. Tidak ada override  → ikuti jadwal otomatis (isDarkAuto)
 
-  const DM_KEY = 'darkModePref'; // 'on' | 'off' | null (hapus key = auto)
-  let   darkAutoTimer = null;
+     Override manual TIDAK disimpan ke localStorage.
+     Ini sengaja: setiap buka halaman baru = ikut jadwal.
+     Override hanya berlaku selama tab masih terbuka.              */
+
+  let darkAutoTimer      = null;
+  let darkManualOverride = null; // null = ikut jadwal | 'dark' | 'light'
 
   function applyDark(isDark) {
     document.documentElement.classList.toggle('dark', isDark);
     const icon = document.getElementById('darkToggleIcon');
     if (icon) icon.className = isDark ? 'ti ti-sun' : 'ti ti-moon';
-    // ubah theme-color meta agar status bar Android ikut berubah
     const meta = document.getElementById('themeColorMeta');
     if (meta) meta.content = isDark ? '#0f1117' : '#2563eb';
   }
 
   function isDarkAuto() {
-    // WIB = UTC+7; jam 18.00–05.59 dianggap malam
-    const now   = new Date();
-    const wibH  = (now.getUTCHours() + 7) % 24;
+    // Jam WIB = UTC+7; malam = 18:00–05:59
+    const wibH = (new Date().getUTCHours() + 7) % 24;
     return wibH >= 18 || wibH < 6;
   }
 
+  function isJadwalBoundary() {
+    // Tepat di momen pergantian jadwal (18:00 atau 06:00 WIB, toleransi 1 menit)
+    const wibH = (new Date().getUTCHours() + 7) % 24;
+    const wibM = new Date().getUTCMinutes();
+    return (wibH === 18 || wibH === 6) && wibM === 0;
+  }
+
   function initDarkMode() {
-    const pref = localStorage.getItem(DM_KEY);
-    const badge = document.getElementById('darkAutoBadge');
+    // Saat halaman dibuka: selalu ikut jadwal, abaikan override lama
+    darkManualOverride = null;
+    applyDark(isDarkAuto());
 
-    if (pref === 'on')  { applyDark(true);  if (badge) badge.style.display='none'; }
-    else if (pref === 'off') { applyDark(false); if (badge) badge.style.display='none'; }
-    else {
-      // Mode otomatis (belum ada pref manual)
-      applyDark(isDarkAuto());
-      if (badge) badge.style.display = 'block';
-    }
-
-    // Jadwalkan re-cek setiap menit supaya auto-mode aktif tepat jam 18.00
     clearInterval(darkAutoTimer);
     darkAutoTimer = setInterval(() => {
-      const p = localStorage.getItem(DM_KEY);
-      if (!p) {
+      if (isJadwalBoundary()) {
+        // ── Jam 18.00 atau 06.00 WIB: paksa jadwal, hapus override ──
+        darkManualOverride = null;
         applyDark(isDarkAuto());
-        const b = document.getElementById('darkAutoBadge');
-        if (b) b.style.display = 'block';
+      } else if (darkManualOverride === null) {
+        // ── Tidak ada override manual: tetap ikut jadwal ──
+        applyDark(isDarkAuto());
       }
-    }, 60_000); // cek tiap 1 menit
+      // Kalau ada override manual dan bukan boundary → biarkan, tidak ubah apa-apa
+    }, 60_000); // cek tiap menit
   }
 
   function toggleDarkMode() {
+    // Toggle visual: gelap ↔ terang
     const isDark   = document.documentElement.classList.contains('dark');
-    const badge    = document.getElementById('darkAutoBadge');
     const newState = !isDark;
-
     applyDark(newState);
-    localStorage.setItem(DM_KEY, newState ? 'on' : 'off');
-    if (badge) badge.style.display = 'none'; // simpan manual → nonaktifkan badge AUTO
-
-    // Long-press / double-click reset → tombol ini cukup sekali klik saja
-    // Kalau mau kembali ke auto, user tahan tombol 1 detik
+    // Simpan sebagai override manual (hanya di memori, TIDAK ke localStorage)
+    // Override ini akan dihapus otomatis saat jam 18.00 atau 06.00 tiba
+    darkManualOverride = newState ? 'dark' : 'light';
   }
-
-  // Tahan tombol 1 detik → reset ke mode AUTO
-  let darkHoldTimer = null;
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('darkToggleBtn');
-    if (!btn) return;
-    btn.addEventListener('mousedown', () => {
-      darkHoldTimer = setTimeout(() => {
-        localStorage.removeItem(DM_KEY);
-        initDarkMode();
-        const b = document.getElementById('darkAutoBadge');
-        if (b) { b.style.display = 'block'; }
-      }, 800);
-    });
-    ['mouseup','mouseleave','touchend'].forEach(ev =>
-      btn.addEventListener(ev, () => clearTimeout(darkHoldTimer))
-    );
-  });
 
   // Inisialisasi dark mode SECEPATNYA (sebelum render DOM selesai juga ok)
   initDarkMode();
