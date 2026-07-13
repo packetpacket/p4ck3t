@@ -4,9 +4,46 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
   <title>Bolang Paket – Sistem Manajemen Paket</title>
+  <!-- PWA -->
+  <meta name="theme-color" content="#2563eb" id="themeColorMeta">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bolang Paket">
+  <meta name="application-name" content="Bolang Paket">
+  <meta name="description" content="Sistem Manajemen Paket">
+  <link rel="manifest" id="pwaManifestLink">
+  <!-- PWA icons inline (SVG data URI — no server needed) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='white'>📦</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%232563eb'/><text x='96' y='130' text-anchor='middle' font-size='110' fill='white'>📦</text></svg>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+  <script>
+    // Fallback loader jika CDN utama gagal (diblokir jaringan/ad-blocker/dll)
+    window.__xlsxSources = [
+      "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+      "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"
+    ];
+    function ensureXLSX() {
+      return new Promise((resolve, reject) => {
+        if (typeof XLSX !== 'undefined') return resolve();
+        const sources = window.__xlsxSources.slice();
+        function tryNext() {
+          if (typeof XLSX !== 'undefined') return resolve();
+          const src = sources.shift();
+          if (!src) return reject(new Error('Semua sumber library Excel gagal dimuat. Periksa koneksi internet Anda.'));
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = () => (typeof XLSX !== 'undefined') ? resolve() : tryNext();
+          s.onerror = tryNext;
+          document.head.appendChild(s);
+        }
+        tryNext();
+      });
+    }
+  </script>
   <style>
     /* ========== RESET & BASE ========== */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,6 +74,11 @@
       --red-border:      #fca5a5;
       --red-text:        #b91c1c;
 
+      --amber:           #d97706;
+      --amber-bg:        #fffbeb;
+      --amber-border:    #fde68a;
+      --amber-text:      #92400e;
+
       --sidebar-w: 210px;
       --topbar-h:  56px;
       --radius:    10px;
@@ -44,6 +86,72 @@
       --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
       --shadow:    0 4px 16px rgba(0,0,0,.10);
     }
+
+    /* ========== DARK MODE ========== */
+    html.dark {
+      --bg:              #0f1117;
+      --surface:         #1a1d2e;
+      --surface-2:       #222540;
+      --border:          #2e3250;
+      --border-strong:   #3a3f65;
+
+      --text-primary:    #e8eaf6;
+      --text-secondary:  #9ba3c7;
+      --text-muted:      #5c6490;
+
+      --accent:          #3b82f6;
+      --accent-dark:     #2563eb;
+      --accent-bg:       #1e2a4a;
+      --accent-text:     #93c5fd;
+
+      --green:           #22c55e;
+      --green-bg:        #0f2a1a;
+      --green-border:    #166534;
+      --green-text:      #86efac;
+
+      --red:             #f87171;
+      --red-bg:          #2d1515;
+      --red-border:      #7f1d1d;
+      --red-text:        #fca5a5;
+
+      --amber:           #fbbf24;
+      --amber-bg:        #2d1f0a;
+      --amber-border:    #78350f;
+      --amber-text:      #fde68a;
+
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.30);
+      --shadow:    0 4px 16px rgba(0,0,0,.40);
+    }
+
+    /* Dark mode — input focus */
+    html.dark .topbar-search input:focus { background: var(--surface-2); }
+    html.dark #dropdownSaran { background: var(--surface); }
+    html.dark .resi-badge { background: var(--surface-2); }
+    html.dark .login-card { background: var(--surface); }
+
+    /* Dark mode toggle button */
+    .dark-toggle {
+      width: 34px; height: 34px;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid transparent;
+      cursor: pointer; font-size: 18px;
+      transition: background .15s, color .15s;
+    }
+    .dark-toggle:hover { background: var(--surface-2); }
+
+    /* Dark mode badge indikator otomatis */
+    .dark-auto-badge {
+      font-size: 9px; font-weight: 700;
+      background: var(--amber); color: #fff;
+      border-radius: 3px; padding: 1px 4px;
+      position: absolute; bottom: -2px; right: -2px;
+      line-height: 1.2;
+      pointer-events: none;
+    }
+    .dark-toggle-wrap { position: relative; display: inline-flex; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -289,6 +397,7 @@
     .stat-label { font-size: 12px; color: var(--text-muted); }
     .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
     .stat-unit  { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+    .stat-breakdown { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
 
     /* ========== ACTION ROW ========== */
     .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
@@ -397,6 +506,50 @@
       display: inline-block; vertical-align: middle; margin-right: 6px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ========== ERROR STATE (gagal memuat data) ========== */
+    .state-row-error td { padding: 0; }
+
+    .error-box { padding: 30px 20px; text-align: center; }
+
+    .error-title {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      font-size: 14px; font-weight: 600; color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .error-title i { font-size: 19px; color: var(--red); }
+
+    .error-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+
+    .error-reasons {
+      list-style: none;
+      display: inline-flex; flex-direction: column; gap: 4px;
+      margin: 0 auto 18px; text-align: left;
+    }
+    .error-reasons li {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 12.5px; color: var(--text-secondary);
+      padding: 7px 12px; border-radius: var(--radius-sm);
+      transition: background .15s, color .15s;
+    }
+    .error-reasons li i { font-size: 16px; color: var(--text-muted); flex-shrink: 0; width: 18px; text-align: center; }
+    .error-reasons li.reason-active {
+      background: var(--red-bg); color: var(--red-text); font-weight: 600;
+    }
+    .error-reasons li.reason-active i { color: var(--red); }
+
+    /* ========== OFFLINE BANNER ========== */
+    .offline-banner {
+      display: none; align-items: center; gap: 9px;
+      background: var(--amber-bg); color: var(--amber-text);
+      border: 1px solid var(--amber-border);
+      border-radius: var(--radius);
+      padding: 10px 14px; font-size: 12.5px; font-weight: 500;
+      margin-bottom: 16px;
+    }
+    .offline-banner.show { display: flex; }
+    .offline-banner i { font-size: 17px; color: var(--amber); flex-shrink: 0; }
+    .offline-banner strong { font-weight: 700; }
 
     /* ========== MODAL OVERLAY ========== */
     .overlay {
@@ -549,6 +702,66 @@
     }
     .fab:hover { background: var(--accent-dark); }
 
+    /* ========== PAGINATION ========== */
+    .pagination-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      font-size: 12px; color: var(--text-muted);
+      flex-wrap: wrap; gap: 8px;
+    }
+    .pagination-bar.hidden { display: none; }
+    .pagination-info { white-space: nowrap; }
+    .pagination-controls { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .pg-btn {
+      min-width: 30px; height: 30px; padding: 0 8px;
+      border-radius: 6px; border: 1px solid var(--border-strong);
+      background: var(--surface); color: var(--text-secondary);
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background .12s, color .12s;
+    }
+    .pg-btn:hover:not(:disabled) { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+    .pg-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .pg-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .pg-ellipsis { color: var(--text-muted); padding: 0 4px; }
+
+    /* ========== TRAKTEER DONASI ========== */
+    .trakteer-sidebar {
+      margin: 0 10px 14px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, #be1e2d 0%, #e8384f 100%);
+      color: white;
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer; border: none; width: calc(100% - 20px);
+      font-size: 12px; font-weight: 600; text-decoration: none;
+      transition: opacity .15s, transform .1s;
+      box-shadow: 0 2px 8px rgba(190,30,45,.35);
+    }
+    .trakteer-sidebar:hover { opacity: .88; transform: translateY(-1px); }
+    .trakteer-sidebar:active { transform: translateY(0); }
+    .trakteer-sidebar .trk-icon { font-size: 16px; flex-shrink: 0; }
+    .trakteer-sidebar .trk-text { line-height: 1.25; text-align: left; }
+    .trakteer-sidebar .trk-sub  { font-size: 10px; font-weight: 400; opacity: .85; display: block; }
+
+    /* Ikon kecil di topbar (muncul di mobile saja) */
+    .trakteer-icon-btn {
+      width: 34px; height: 34px;
+      border-radius: var(--radius-sm);
+      background: #be1e2d; color: white;
+      display: none; align-items: center; justify-content: center;
+      border: none; cursor: pointer; font-size: 15px;
+      transition: opacity .15s;
+    }
+    .trakteer-icon-btn:hover { opacity: .85; }
+    @media (max-width: 768px) {
+      .trakteer-icon-btn { display: inline-flex; }
+    }
+
     /* ========== RESPONSIVE ========== */
     @media (max-width: 768px) {
       .sidebar      { transform: translateX(-100%); }
@@ -620,7 +833,7 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon"><i class="ti ti-package"></i></div>
-      <div class="logo-text">Bolang Paket</div>
+      <div class="logo-text">Packet Manager</div>
     </div>
 
     <nav class="nav-menu">
@@ -639,6 +852,15 @@
         <i class="ti ti-file-description"></i>Memo / laporan
       </div>
     </nav>
+
+    <!-- TRAKTEER DONASI -->
+    <a class="trakteer-sidebar" href="https://trakteer.id/bolangpacket/tip" target="_blank" rel="noopener" title="Dukung pengembang via Trakteer">
+      <span class="trk-icon">☕</span>
+      <span class="trk-text">
+        Dukung via Trakteer
+        <span class="trk-sub">Bantu developer tetap semangat!</span>
+      </span>
+    </a>
 
     <div class="sidebar-footer">
       <div class="user-avatar" id="sidebarAvatar">S</div>
@@ -661,6 +883,15 @@
       </div>
       <div class="topbar-right">
         <button class="icon-btn" onclick="refresh()" title="Refresh"><i class="ti ti-refresh"></i></button>
+        <!-- TRAKTEER (hanya muncul di mobile) -->
+        <a class="trakteer-icon-btn" href="https://trakteer.id/bolangpacket/tip" target="_blank" rel="noopener" title="Dukung via Trakteer">☕</a>
+        <!-- DARK MODE TOGGLE -->
+        <div class="dark-toggle-wrap" title="Toggle dark mode">
+          <button class="dark-toggle" id="darkToggleBtn" onclick="toggleDarkMode()">
+            <i class="ti ti-moon" id="darkToggleIcon"></i>
+          </button>
+          <span class="dark-auto-badge" id="darkAutoBadge" style="display:none">AUTO</span>
+        </div>
         <button class="btn btn-danger" onclick="handleLogout()">
           <i class="ti ti-logout"></i>
           <span class="topbar-keluar-text">Keluar</span>
@@ -671,10 +902,16 @@
     <!-- PAGE -->
     <main class="page">
 
+      <!-- OFFLINE BANNER -->
+      <div class="offline-banner" id="offlineBanner">
+        <i class="ti ti-cloud-off"></i>
+        <span>Data terakhir diperbarui pukul <strong id="offlineTime">--.--</strong> (mode offline)</span>
+      </div>
+
       <!-- GREETING -->
       <div class="greeting">
         <h1>Halo, <span id="greeting-name">User</span> 👋</h1>
-        <p>Selamat datang kembali di Bolang Paket</p>
+        <p>Selamat datang kembali di Packet Manager</p>
       </div>
 
       <!-- STATS -->
@@ -683,21 +920,23 @@
         <div class="stat-card">
           <div class="stat-icon blue"><i class="ti ti-package"></i></div>
           <div>
-            <div class="stat-label">Paket masuk</div>
+            <div class="stat-label">Paket Masuk</div>
             <div class="stat-value">
               <span id="statMasuk"><span class="spinner"></span></span>
               <span class="stat-unit" id="statMasukUnit"></span>
             </div>
+            <div class="stat-breakdown" id="statMasukBreakdown"></div>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon green"><i class="ti ti-truck-delivery"></i></div>
           <div>
-            <div class="stat-label">Paket keluar</div>
+            <div class="stat-label">Paket Keluar (Paket + Makanan)</div>
             <div class="stat-value">
               <span id="statKeluar"><span class="spinner"></span></span>
               <span class="stat-unit" id="statKeluarUnit"></span>
             </div>
+            <div class="stat-breakdown" id="statKeluarBreakdown"></div>
           </div>
         </div>
       </div>
@@ -716,6 +955,9 @@
       <div class="section-header">
         <div class="section-title">Riwayat data terakhir</div>
         <div class="section-actions">
+          <button class="btn btn-ghost" onclick="exportToExcel()" title="Download Excel">
+            <i class="ti ti-file-download"></i><span id="exportLabel">Export Excel</span>
+          </button>
           <button class="btn btn-danger" id="btnHapusMassal" onclick="handleDeleteAll()">
             <i class="ti ti-trash"></i><span id="hapusLabel">Hapus semua</span>
           </button>
@@ -752,6 +994,11 @@
               <tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>
             </tbody>
           </table>
+        </div>
+        <!-- PAGINATION -->
+        <div class="pagination-bar hidden" id="paginationBar">
+          <div class="pagination-info" id="paginationInfo"></div>
+          <div class="pagination-controls" id="paginationControls"></div>
         </div>
       </div>
 
@@ -974,6 +1221,8 @@
 <script>
   /* ── CONFIG ─────────────────────────────────────────────────── */
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnGLtkXKJvk5OgBlf1jatir_8GGRkbB4jwTM1PgztoGieZekILQG-DaMH3HsIvSy3ArQ/exec";
+  const TIMEOUT_MS = 12000; // 12 detik — cukup toleran untuk koneksi 4G yang lambat
+  const CACHE_KEY  = 'bolangPaketCache';
 
   /* ── STATE ──────────────────────────────────────────────────── */
   let userEmailAktif = "";
@@ -1038,108 +1287,575 @@
     document.getElementById('user-display').innerText   = email;
     document.getElementById('greeting-name').innerText  = email.split('@')[0];
     document.getElementById('sidebarAvatar').innerText  = email.charAt(0).toUpperCase();
+
+    // Kalau sudah tau offline sebelum fetch dimulai, langsung tampilkan
+    // cache (kalau ada) dan banner — tidak perlu menunggu timeout 12 detik
+    if (!navigator.onLine) {
+      sedangOffline = true; // sinkronkan flag agar auto-check & event konsisten
+      const cache = ambilCacheData();
+      if (cache && Array.isArray(cache.masuk) && Array.isArray(cache.keluar)) {
+        listDataMasuk  = cache.masuk;
+        listDataKeluar = cache.keluar;
+        tampilkanStats(listDataMasuk, listDataKeluar);
+        renderTabel();
+        showOfflineBanner(cache.waktu);
+        return; // skip fetch; auto-check berkala yang akan nanti refresh saat online
+      }
+    }
+
     muatSemuaData();
     muatDataKontak();
   }
 
-  window.onload = checkAuth;
+  window.onload = () => {
+    checkAuth();
+    daftarEventKoneksi();
+  };
+
+  /* ── AUTO-DETEKSI PERUBAHAN KONEKSI + AUTO-CHECK BERKALA ───────
+     - Event offline/online  → reaksi instan saat jaringan putus/nyambung
+     - Ping tiap 30 detik   → tangkap kasus "WiFi nyambung tapi internet mati"
+       yang tidak terdeteksi event browser (karena navigator.onLine masih true)
+     - Ping memakai request HEAD kecil ke endpoint /ping sehingga tidak
+       membebani server; timeout hanya 5 detik agar cepat ketahuan           */
+  let autoCheckInterval = null;
+  let sedangOffline     = false;
+
+  function daftarEventKoneksi() {
+    // ── Event bawaan browser (cepat, tapi hanya level perangkat) ──
+    window.addEventListener('offline', () => {
+      tandaiOffline();
+    });
+
+    window.addEventListener('online', () => {
+      // Browser bilang nyambung — verifikasi dulu dengan ping sebelum
+      // langsung refresh, supaya tidak terlalu optimistis
+      pingServer().then(ok => {
+        if (ok) tandaiOnline();
+        // kalau ping masih gagal, biarkan auto-check yang nangani
+      });
+    });
+
+    // ── Auto-check ping tiap 30 detik ─────────────────────────────
+    // Dimulai setelah halaman siap; berhenti otomatis kalau tab/window ditutup
+    autoCheckInterval = setInterval(async () => {
+      const ok = await pingServer();
+      if (!ok && !sedangOffline) {
+        tandaiOffline();
+      } else if (ok && sedangOffline) {
+        tandaiOnline();
+      }
+    }, 30_000); // 30 detik
+  }
+
+  /* Cek konektivitas jaringan dengan GET no-cors.
+     Kenapa no-cors: HEAD request ke Google Apps Script sering gagal
+     karena CORS preflight, sehingga pingServer selalu return false
+     bahkan saat internet sebenarnya sudah nyambung kembali.
+     Dengan mode:'no-cors', browser tidak melakukan CORS check —
+     kalau fetch resolve (opaque response) = jaringan ada,
+     kalau throw (AbortError / TypeError) = benar-benar offline. */
+  async function pingServer() {
+    try {
+      await fetchWithTimeout(
+        `${SCRIPT_URL}?action=ping&_=${Date.now()}`,
+        { mode: 'no-cors' }, // no-cors: tidak throw karena CORS, hanya throw kalau network mati
+        5000
+      );
+      return true;  // fetch resolve = jaringan tersedia
+    } catch (e) {
+      return false; // AbortError (timeout) atau TypeError (no network)
+    }
+  }
+
+  /* Tandai kondisi offline: tampilkan banner cache kalau ada */
+  function tandaiOffline() {
+    if (sedangOffline) return; // sudah offline, tidak perlu repeat
+    sedangOffline = true;
+    const cache = ambilCacheData();
+    if (cache) {
+      showOfflineBanner(cache.waktu);
+    }
+  }
+
+  /* Tandai kondisi kembali online: sembunyikan banner, refresh data */
+  function tandaiOnline() {
+    if (!sedangOffline) return; // sudah online, tidak perlu repeat
+    sedangOffline = false;
+    hideOfflineBanner();
+    muatSemuaData();
+    muatDataKontak();
+  }
+
+  /* ── FETCH DENGAN TIMEOUT ──────────────────────────────────────
+     Supaya request tidak menggantung tanpa batas di koneksi jelek,
+     tapi tetap diberi cukup waktu (12 detik) sebelum dianggap gagal. */
+  async function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /* ── CACHE OFFLINE (localStorage) ──────────────────────────────
+     Setiap kali data berhasil dimuat, disimpan sebagai cadangan.
+     Kalau nanti gagal memuat (internet jelek), data cadangan ini
+     yang ditampilkan supaya halaman tidak kosong. */
+  function simpanCacheData(dataMasuk, dataKeluar) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        masuk:  dataMasuk,
+        keluar: dataKeluar,
+        waktu:  Date.now()
+      }));
+    } catch (e) { /* storage penuh atau diblokir browser, abaikan saja */ }
+  }
+
+  function ambilCacheData() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function formatWaktuOffline(ms) {
+    const d     = new Date(ms);
+    const jam   = String(d.getHours()).padStart(2, '0');
+    const menit = String(d.getMinutes()).padStart(2, '0');
+    return `${jam}.${menit}`;
+  }
+
+  function showOfflineBanner(ms) {
+    document.getElementById('offlineTime').innerText = formatWaktuOffline(ms);
+    document.getElementById('offlineBanner').classList.add('show');
+  }
+
+  function hideOfflineBanner() {
+    document.getElementById('offlineBanner').classList.remove('show');
+  }
+
+  /* ── HITUNG & TAMPILKAN RINGKASAN ──────────────────────────────
+     Dipakai baik untuk data hasil fetch langsung, maupun data
+     cadangan (cache) saat mode offline. */
+  function tampilkanStats(dataMasuk, dataKeluar) {
+    // Paket masuk = total kuantitas jumlahMasuk dari setiap baris data masuk,
+    // bukan sekadar jumlah baris/transaksi. Kolom index 2 = jumlahMasuk.
+    let jmlMasuk = 0;
+    for (let i = 1; i < dataMasuk.length; i++) {
+      const row = dataMasuk[i];
+      if (!row) continue;
+      const kode = String(row[0] || '').trim();
+      const nama = String(row[1] || '').trim();
+      if (!kode && !nama) continue; // skip baris kosong
+      jmlMasuk += parseInt(row[2], 10) || 1; // default 1 jika kolom kosong
+    }
+
+    // Paket keluar = jumlah paket + jumlah makanan (FnB) dari setiap baris data keluar,
+    // bukan sekadar jumlah baris/transaksi. Kolom index 4 = jumlahFnb, index 5 = jumlahPaket.
+    let totalPaketKeluar = 0;
+    let totalFnbKeluar   = 0;
+    for (let i = 1; i < dataKeluar.length; i++) {
+      const row = dataKeluar[i];
+      if (!row) continue;
+      totalFnbKeluar   += parseInt(row[4], 10) || 0;
+      totalPaketKeluar += parseInt(row[5], 10) || 0;
+    }
+    const jmlKeluar = totalPaketKeluar + totalFnbKeluar;
+
+    document.getElementById('statMasuk').innerText   = jmlMasuk;
+    document.getElementById('statKeluar').innerText  = jmlKeluar;
+    document.getElementById('statMasukUnit').innerText  = ' data';
+    document.getElementById('statKeluarUnit').innerText = ' data';
+    document.getElementById('statMasukBreakdown').innerText =
+      `dari ${Math.max(0, dataMasuk.length - 1)} transaksi`;
+    document.getElementById('statKeluarBreakdown').innerText =
+      `${totalPaketKeluar} paket • ${totalFnbKeluar} makanan`;
+  }
 
   /* ── DATA LOADING ───────────────────────────────────────────── */
   function refresh() { muatSemuaData(); }
 
   async function muatSemuaData() {
+    hideOfflineBanner();
     // tampilkan spinner di stat
     ['statMasuk','statKeluar'].forEach(id => {
       document.getElementById(id).innerHTML = '<span class="spinner"></span>';
     });
     document.getElementById('statMasukUnit').innerText  = '';
     document.getElementById('statKeluarUnit').innerText = '';
+    document.getElementById('statMasukBreakdown').innerText = '';
+    document.getElementById('statKeluarBreakdown').innerText = '';
     // tampilkan loading di tabel
     document.getElementById('tb').innerHTML =
       '<tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>';
 
     try {
       const [rMasuk, rKeluar] = await Promise.all([
-        fetch(`${SCRIPT_URL}?type=masuk`).then(r => r.json()),
-        fetch(`${SCRIPT_URL}?type=keluar`).then(r => r.json())
+        fetchWithTimeout(`${SCRIPT_URL}?type=masuk`).then(r => r.json()),
+        fetchWithTimeout(`${SCRIPT_URL}?type=keluar`).then(r => r.json())
       ]);
       listDataMasuk  = rMasuk;
       listDataKeluar = rKeluar;
 
-      const jmlMasuk  = Math.max(0, listDataMasuk.length  - 1);
-      const jmlKeluar = Math.max(0, listDataKeluar.length - 1);
-
-      document.getElementById('statMasuk').innerText   = jmlMasuk;
-      document.getElementById('statKeluar').innerText  = jmlKeluar;
-      document.getElementById('statMasukUnit').innerText  = jmlMasuk  !== 1 ? ' data' : ' data';
-      document.getElementById('statKeluarUnit').innerText = jmlKeluar !== 1 ? ' data' : ' data';
-
+      tampilkanStats(listDataMasuk, listDataKeluar);
+      simpanCacheData(listDataMasuk, listDataKeluar);
       renderTabel();
     } catch (e) {
-      document.getElementById('statMasuk').innerText  = '!';
-      document.getElementById('statKeluar').innerText = '!';
-      document.getElementById('tb').innerHTML =
-        '<tr class="state-row"><td colspan="4">Gagal memuat data. Coba refresh.</td></tr>';
       console.error(e);
+      handleLoadError(e);
     }
+  }
+
+  /* ── PENANGANAN GAGAL MUAT ──────────────────────────────────────
+     1) Kalau ada cache dari load sebelumnya → tampilkan itu dulu
+        dan beri tahu pengguna ini "mode offline".
+     2) Kalau tidak ada cache sama sekali → tampilkan kotak error
+        lengkap dengan kemungkinan penyebab + tombol Coba Lagi. */
+  function handleLoadError(err) {
+    const cache = ambilCacheData();
+
+    if (cache && Array.isArray(cache.masuk) && Array.isArray(cache.keluar)) {
+      listDataMasuk  = cache.masuk;
+      listDataKeluar = cache.keluar;
+      tampilkanStats(listDataMasuk, listDataKeluar);
+      renderTabel();
+      showOfflineBanner(cache.waktu);
+    } else {
+      document.getElementById('statMasuk').innerText  = '–';
+      document.getElementById('statKeluar').innerText = '–';
+      document.getElementById('statMasukBreakdown').innerText  = '';
+      document.getElementById('statKeluarBreakdown').innerText = '';
+      tampilkanErrorBox(err);
+    }
+  }
+
+  function tampilkanErrorBox(err) {
+    // Deteksi ringan penyebab paling mungkin, supaya salah satu alasan
+    // di bawah bisa disorot (bukan sekadar daftar generik).
+    const offline    = (typeof navigator !== 'undefined' && navigator.onLine === false);
+    const timeoutErr = err && err.name === 'AbortError';
+
+    document.getElementById('tb').innerHTML = `
+      <tr class="state-row-error">
+        <td colspan="4">
+          <div class="error-box">
+            <div class="error-title"><i class="ti ti-alert-triangle"></i>Gagal memuat data</div>
+            <p class="error-desc">Kemungkinan penyebabnya:</p>
+            <ul class="error-reasons">
+              <li class="${offline ? 'reason-active' : ''}"><i class="ti ti-wifi-off"></i>Tidak ada koneksi internet</li>
+              <li class="${!offline && timeoutErr ? 'reason-active' : ''}"><i class="ti ti-clock"></i>Koneksi terlalu lambat</li>
+              <li class="${!offline && !timeoutErr ? 'reason-active' : ''}"><i class="ti ti-cloud"></i>Server Google sedang sibuk</li>
+            </ul>
+            <button class="btn btn-primary" onclick="muatSemuaData()">
+              <i class="ti ti-refresh"></i>Coba Lagi
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
   }
 
   /* legacy alias */
   function muatData() { muatSemuaData(); }
 
-  /* ── TABEL RENDER ───────────────────────────────────────────── */
-  function renderTabel() {
+  /* ── TABEL RENDER (dengan Pagination 50 baris/halaman) ─────── */
+  const PAGE_SIZE       = 50;     // baris per halaman
+  let   currentPage     = 1;      // halaman aktif saat ini
+  let   allFilteredRows = [];     // cache semua baris setelah filter+search
+
+  function kumpulkanRows() {
     const q = (document.getElementById('inputCariTabel').value || '').toLowerCase().trim();
-    const tbody = document.getElementById('tb');
     let rows = [];
 
-    if (filterMode === 'semua' || filterMode === 'masuk') {
+    if (filterMode === 'semua') {
+      for (let i = 1; i < listDataMasuk.length; i++) {
+        const kode = String(listDataMasuk[i][0] || '').trim();
+        const nama = String(listDataMasuk[i][1] || '').trim();
+        if (!kode && !nama) continue;
+        const jam = listDataMasuk[i][3] || '';
+        rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk', timestamp: jam, rowNum: i });
+      }
+      for (let i = 1; i < listDataKeluar.length; i++) {
+        const kode = String(listDataKeluar[i][0] || '').trim();
+        const nama = String(listDataKeluar[i][2] || '').trim();
+        if (!kode && !nama) continue;
+        const jam = listDataKeluar[i][7] || '';
+        rows.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar', timestamp: jam, rowNum: i });
+      }
+      rows.sort((a, b) => {
+        if (a.timestamp && b.timestamp) return b.timestamp.localeCompare(a.timestamp);
+        return b.rowNum - a.rowNum;
+      });
+    } else if (filterMode === 'masuk') {
       for (let i = listDataMasuk.length - 1; i >= 1; i--) {
-        rows.push({ kode: listDataMasuk[i][0] || '', nama: listDataMasuk[i][1] || '', jenis: 'masuk', idx: i });
+        const kode = String(listDataMasuk[i][0] || '').trim();
+        const nama = String(listDataMasuk[i][1] || '').trim();
+        if (!kode && !nama) continue;
+        rows.push({ kode, nama, jenis: 'masuk', idx: i, type: 'masuk' });
       }
-    }
-    if (filterMode === 'semua' || filterMode === 'keluar') {
+    } else if (filterMode === 'keluar') {
       for (let i = listDataKeluar.length - 1; i >= 1; i--) {
-        rows.push({ kode: listDataKeluar[i][0] || '', nama: listDataKeluar[i][2] || '', jenis: 'keluar', idx: i });
+        const kode = String(listDataKeluar[i][0] || '').trim();
+        const nama = String(listDataKeluar[i][2] || '').trim();
+        if (!kode && !nama) continue;
+        rows.push({ kode, nama, jenis: 'keluar', idx: i, type: 'keluar' });
       }
     }
 
-    if (q) rows = rows.filter(r =>
-      r.kode.toLowerCase().includes(q) || r.nama.toLowerCase().includes(q)
-    );
+    if (q) {
+      rows = rows.filter(r =>
+        r.kode.toLowerCase().includes(q) ||
+        r.nama.toLowerCase().includes(q)
+      );
+    }
+    return rows;
+  }
 
-    if (!rows.length) {
+  function renderPaginationBar(total, page) {
+    const bar      = document.getElementById('paginationBar');
+    const infoEl   = document.getElementById('paginationInfo');
+    const ctrlEl   = document.getElementById('paginationControls');
+    const totalPage = Math.ceil(total / PAGE_SIZE);
+
+    if (total <= PAGE_SIZE) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+
+    const start = (page - 1) * PAGE_SIZE + 1;
+    const end   = Math.min(page * PAGE_SIZE, total);
+    infoEl.textContent = `${start}–${end} dari ${total} data`;
+
+    // Buat tombol halaman: prev … 1 2 3 … next
+    let html = `<button class="pg-btn" onclick="goToPage(${page-1})" ${page===1?'disabled':''} title="Sebelumnya"><i class="ti ti-chevron-left"></i></button>`;
+
+    const delta = 2; // banyak halaman di kiri-kanan halaman aktif
+    let pages   = new Set([1, totalPage]);
+    for (let p = Math.max(1, page - delta); p <= Math.min(totalPage, page + delta); p++) pages.add(p);
+    pages = [...pages].sort((a,b) => a-b);
+
+    let prev = 0;
+    for (const p of pages) {
+      if (prev && p - prev > 1) html += `<span class="pg-ellipsis">…</span>`;
+      html += `<button class="pg-btn${p===page?' active':''}" onclick="goToPage(${p})">${p}</button>`;
+      prev = p;
+    }
+
+    html += `<button class="pg-btn" onclick="goToPage(${page+1})" ${page===totalPage?'disabled':''} title="Berikutnya"><i class="ti ti-chevron-right"></i></button>`;
+    ctrlEl.innerHTML = html;
+  }
+
+  function goToPage(p) {
+    const totalPage = Math.ceil(allFilteredRows.length / PAGE_SIZE);
+    if (p < 1 || p > totalPage) return;
+    currentPage = p;
+    renderHalamanTabel();
+    // scroll ke atas tabel
+    document.getElementById('tabelData').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderHalamanTabel() {
+    const tbody   = document.getElementById('tb');
+    const total   = allFilteredRows.length;
+    const start   = (currentPage - 1) * PAGE_SIZE;
+    const halaman = allFilteredRows.slice(start, start + PAGE_SIZE);
+
+    if (!halaman.length) {
       tbody.innerHTML = `<tr class="state-row"><td colspan="4">Tidak ada data ditemukan</td></tr>`;
+      document.getElementById('paginationBar').classList.add('hidden');
       return;
     }
 
-    tbody.innerHTML = rows.map(r => `
+    tbody.innerHTML = halaman.map(r => `
       <tr>
         <td style="font-family:${r.jenis==='masuk'?'monospace':'inherit'}; font-weight:500;"
             title="${r.kode}">${r.kode || '—'}</td>
         <td style="color:var(--text-secondary);" title="${r.nama}">${r.nama || '—'}</td>
         <td><span class="badge ${r.jenis}">${r.jenis==='masuk'?'↓ Masuk':'↑ Keluar'}</span></td>
         <td>
-          <button class="tbl-btn edit" onclick="editData('${r.jenis}',${r.idx})" title="Edit">
+          <button class="tbl-btn edit" onclick="editData('${r.type}',${r.idx})" title="Edit">
             <i class="ti ti-edit"></i>
           </button>
-          <button class="tbl-btn del"  onclick="hapusData('${r.jenis}',${r.idx+1})" title="Hapus">
+          <button class="tbl-btn del"  onclick="hapusData('${r.type}',${r.idx+1})" title="Hapus">
             <i class="ti ti-trash"></i>
           </button>
         </td>
       </tr>
     `).join('');
+
+    renderPaginationBar(total, currentPage);
+  }
+
+  function renderTabel() {
+    allFilteredRows = kumpulkanRows();
+    // Reset ke halaman 1 jika filter/search berubah
+    const totalPage = Math.ceil(allFilteredRows.length / PAGE_SIZE);
+    if (currentPage > totalPage) currentPage = 1;
+    renderHalamanTabel();
+  }
+
+  /* ── DARK MODE ─────────────────────────────────────────────────
+     Aturan prioritas:
+     1. Jam 18:00 WIB       → SELALU paksa dark, hapus override manual
+     2. Jam 06:00 WIB       → SELALU paksa light, hapus override manual
+     3. Di antara jam itu   → ikuti override manual kalau ada
+     4. Tidak ada override  → ikuti jadwal otomatis (isDarkAuto)
+
+     Override manual TIDAK disimpan ke localStorage.
+     Ini sengaja: setiap buka halaman baru = ikut jadwal.
+     Override hanya berlaku selama tab masih terbuka.              */
+
+  let darkAutoTimer      = null;
+  let darkManualOverride = null; // null = ikut jadwal | 'dark' | 'light'
+
+  function applyDark(isDark) {
+    document.documentElement.classList.toggle('dark', isDark);
+    const icon = document.getElementById('darkToggleIcon');
+    if (icon) icon.className = isDark ? 'ti ti-sun' : 'ti ti-moon';
+    const meta = document.getElementById('themeColorMeta');
+    if (meta) meta.content = isDark ? '#0f1117' : '#2563eb';
+  }
+
+  function isDarkAuto() {
+    // Jam WIB = UTC+7; malam = 18:00–05:59
+    const wibH = (new Date().getUTCHours() + 7) % 24;
+    return wibH >= 18 || wibH < 6;
+  }
+
+  function isJadwalBoundary() {
+    // Tepat di momen pergantian jadwal (18:00 atau 06:00 WIB, toleransi 1 menit)
+    const wibH = (new Date().getUTCHours() + 7) % 24;
+    const wibM = new Date().getUTCMinutes();
+    return (wibH === 18 || wibH === 6) && wibM === 0;
+  }
+
+  function initDarkMode() {
+    // Saat halaman dibuka: selalu ikut jadwal, abaikan override lama
+    darkManualOverride = null;
+    applyDark(isDarkAuto());
+
+    clearInterval(darkAutoTimer);
+    darkAutoTimer = setInterval(() => {
+      if (isJadwalBoundary()) {
+        // ── Jam 18.00 atau 06.00 WIB: paksa jadwal, hapus override ──
+        darkManualOverride = null;
+        applyDark(isDarkAuto());
+      } else if (darkManualOverride === null) {
+        // ── Tidak ada override manual: tetap ikut jadwal ──
+        applyDark(isDarkAuto());
+      }
+      // Kalau ada override manual dan bukan boundary → biarkan, tidak ubah apa-apa
+    }, 60_000); // cek tiap menit
+  }
+
+  function toggleDarkMode() {
+    // Toggle visual: gelap ↔ terang
+    const isDark   = document.documentElement.classList.contains('dark');
+    const newState = !isDark;
+    applyDark(newState);
+    // Simpan sebagai override manual (hanya di memori, TIDAK ke localStorage)
+    // Override ini akan dihapus otomatis saat jam 18.00 atau 06.00 tiba
+    darkManualOverride = newState ? 'dark' : 'light';
+  }
+
+  // Inisialisasi dark mode SECEPATNYA (sebelum render DOM selesai juga ok)
+  initDarkMode();
+
+  /* ── PWA — SERVICE WORKER + MANIFEST DINAMIS ──────────────────
+     Manifest dibuat inline via Blob URL supaya tidak butuh file
+     manifest.json terpisah. Service Worker di-register dari blob
+     dengan strategi Cache-First untuk asset utama.               */
+  function initPWA() {
+    // 1) Manifest JSON (Blob URL)
+    const manifest = {
+      name:             "Bolang Paket – Manajemen Paket",
+      short_name:       "Bolang Paket",
+      description:      "Sistem Manajemen Paket",
+      start_url:        location.href,
+      display:          "standalone",
+      orientation:      "portrait-primary",
+      background_color: "#1a1d2e",
+      theme_color:      "#2563eb",
+      icons: [
+        {
+          src:   "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%232563eb'/><text x='96' y='130' text-anchor='middle' font-size='110' fill='white'>📦</text></svg>",
+          sizes: "192x192", type: "image/svg+xml", purpose: "any maskable"
+        },
+        {
+          src:   "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%232563eb'/><text x='256' y='345' text-anchor='middle' font-size='300' fill='white'>📦</text></svg>",
+          sizes: "512x512", type: "image/svg+xml", purpose: "any maskable"
+        }
+      ]
+    };
+    const blob    = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    const blobURL = URL.createObjectURL(blob);
+    const linkEl  = document.getElementById('pwaManifestLink');
+    if (linkEl) linkEl.href = blobURL;
+
+    // 2) Tombol "Install ke Home Screen" — muncul kalau browser support beforeinstallprompt
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      showPWAInstallBtn();
+    });
+    window.addEventListener('appinstalled', () => {
+      hidePWAInstallBtn();
+      deferredPrompt = null;
+    });
+
+    // Expose trigger ke tombol di topbar
+    window._triggerPWAInstall = () => {
+      if (!deferredPrompt) {
+        alert('Untuk install:\n• Chrome/Edge: ketuk ⋮ → "Tambahkan ke layar utama"\n• Safari iOS: ketuk □↑ → "Tambah ke Layar Utama"');
+        return;
+      }
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => { deferredPrompt = null; hidePWAInstallBtn(); });
+    };
+  }
+
+  function showPWAInstallBtn() {
+    let btn = document.getElementById('pwaInstallBtn');
+    if (btn) { btn.style.display = 'inline-flex'; return; }
+    // Buat tombol install baru di topbar-right
+    btn = document.createElement('button');
+    btn.id        = 'pwaInstallBtn';
+    btn.className = 'icon-btn';
+    btn.title     = 'Install ke Home Screen';
+    btn.innerHTML = '<i class="ti ti-device-mobile-down"></i>';
+    btn.onclick   = () => window._triggerPWAInstall();
+    const right = document.querySelector('.topbar-right');
+    if (right) right.insertBefore(btn, right.firstChild);
+  }
+  function hidePWAInstallBtn() {
+    const btn = document.getElementById('pwaInstallBtn');
+    if (btn) btn.style.display = 'none';
+  }
+
+  // Panggil initPWA setelah DOM siap
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPWA);
+  } else {
+    initPWA();
   }
 
   /* ── SEARCH & FILTER ────────────────────────────────────────── */
+  let searchTimeout;
   function sinkronSearch(val) {
-    document.getElementById('inputCariTopbar').value  = val;
-    document.getElementById('inputCariTabel').value   = val;
-    renderTabel();
+    document.getElementById('inputCariTopbar').value = val;
+    document.getElementById('inputCariTabel').value  = val;
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      currentPage = 1; // kembali ke halaman 1 saat search berubah
+      renderTabel();
+    }, 150);
   }
 
   function setFilter(f) {
-    filterMode = f;
+    filterMode  = f;
+    currentPage = 1; // reset ke halaman 1 saat ganti filter
     ['Semua','Masuk','Keluar'].forEach(x =>
       document.getElementById('f'+x).classList.remove('active')
     );
@@ -1304,7 +2020,7 @@
   /* ── KONTAK & AUTOCOMPLETE ──────────────────────────────────── */
   async function muatDataKontak() {
     try {
-      const res = await fetch(`${SCRIPT_URL}?action=getKontak`);
+      const res = await fetchWithTimeout(`${SCRIPT_URL}?action=getKontak`);
       memoriLokal = await res.json();
     } catch (e) { console.log(e); }
   }
@@ -1435,6 +2151,190 @@
       }
     });
   });
+
+  /* ── EXPORT EXCEL: helper & konfigurasi ────────────────────── */
+
+  // Header default (dipakai jika baris header dari sheet sumber kosong/tidak ada)
+  const DEFAULT_HEADER_MASUK  = ['Nomor Resi', 'Alamat', 'Jumlah', 'Jam'];
+  const DEFAULT_HEADER_KELUAR = ['Pemilik Paket', 'Alamat', 'Pengambil', 'No. Tlp', 'Jumlah FnB', 'Jumlah Paket', 'Disposal', 'Jam', 'Nomor Resi'];
+
+  function buatSheetDenganStyle(headers, rows) {
+    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Style header (background biru, text putih)
+    const headerStyle = {
+      fill: { fgColor: { rgb: "2563EB" } },
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      alignment: { horizontal: "center", vertical: "center" }
+    };
+    for (let c = 0; c < headers.length; c++) {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c });
+      if (ws[cellRef]) ws[cellRef].s = headerStyle;
+    }
+
+    // Lebar kolom otomatis menyesuaikan isi terpanjang (min 8, max 40)
+    ws['!cols'] = headers.map((h, c) => {
+      let maxLen = String(h || '').length;
+      for (const row of rows) {
+        const val = row[c] == null ? '' : String(row[c]);
+        if (val.length > maxLen) maxLen = val.length;
+      }
+      return { wch: Math.min(Math.max(maxLen + 2, 8), 40) };
+    });
+
+    // Bekukan baris header
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+    return ws;
+  }
+
+  /* ── FORMAT TIMESTAMP ──────────────────────────────────────────
+     Kolom "Jam" di Google Sheets adalah nilai waktu dengan tanggal
+     referensi 30 Des 1899. Saat Apps Script mengonversinya ke UTC,
+     mesin V8 memakai zona waktu HISTORIS Asia/Jakarta untuk tanggal
+     setua itu (+07:07:12, offset "Batavia" sebelum tahun 1924),
+     bukan +07:00 yang berlaku sekarang. Makanya jam mentah dari API
+     selalu lebih maju 7 jam 7 menit 12 detik dibanding yang tertulis
+     di spreadsheet. Koreksi ini menyelaraskannya kembali. */
+  function formatTimestampToTime(timestamp) {
+    if (!timestamp) return '';
+    try {
+      // Parse timestamp ISO: 1899-12-30T05:26:07.000Z
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) return timestamp; // Jika invalid, return as-is
+
+      const KOREKSI_DETIK = 7 * 3600 + 7 * 60 + 12; // 7 jam 7 menit 12 detik = 25632 detik
+
+      let totalDetik = date.getUTCHours() * 3600 + date.getUTCMinutes() * 60 + date.getUTCSeconds();
+      totalDetik = ((totalDetik - KOREKSI_DETIK) % 86400 + 86400) % 86400; // wrap aman, hindari hasil negatif
+
+      const hours   = String(Math.floor(totalDetik / 3600)).padStart(2, '0');
+      const minutes = String(Math.floor((totalDetik % 3600) / 60)).padStart(2, '0');
+      const seconds = String(totalDetik % 60).padStart(2, '0');
+
+      return `${hours}:${minutes}:${seconds}`;
+    } catch (e) {
+      return timestamp; // Jika error, return original value
+    }
+  }
+
+  /* ── EXPORT EXCEL ───────────────────────────────────────────── */
+  async function exportToExcel() {
+    const btn = document.querySelector('[onclick="exportToExcel()"]');
+    const originalLabel = btn.querySelector('#exportLabel')?.innerText || 'Export Excel';
+    btn.disabled = true;
+    btn.querySelector('#exportLabel').innerText = 'Memproses…';
+
+    try {
+      // Pastikan library XLSX sudah termuat (coba CDN cadangan jika perlu)
+      btn.querySelector('#exportLabel').innerText = 'Memuat library…';
+      await ensureXLSX();
+      btn.querySelector('#exportLabel').innerText = 'Memproses…';
+
+      const q = (document.getElementById('inputCariTabel').value || '').toLowerCase().trim();
+      const wb = XLSX.utils.book_new();
+      let adaSheet = false;
+
+      // ── SHEET PAKET MASUK (semua kolom, semua data) ──
+      if (filterMode === 'semua' || filterMode === 'masuk') {
+        const headerMasuk = (listDataMasuk[0] && listDataMasuk[0].length ? listDataMasuk[0] : DEFAULT_HEADER_MASUK);
+        let rowsMasuk = [];
+        // Iterasi dari depan ke belakang (ascending) - nomor 1 adalah data paling awal
+        for (let i = 1; i < listDataMasuk.length; i++) {
+          const row = listDataMasuk[i];
+          if (!row) continue;
+          const kode = String(row[0] || '').trim();
+          const nama = String(row[1] || '').trim();
+          if (!kode && !nama) continue; // skip baris kosong
+          // Format Jam (kolom D, index 3) dari timestamp ISO menjadi HH:MM:SS
+          const rowFormatted = row.map((v, idx) => {
+            if (idx === 3 && v) { // Kolom D (Jam) - index 3
+              return formatTimestampToTime(v);
+            }
+            return v == null ? '' : v;
+          });
+          rowsMasuk.push(rowFormatted);
+        }
+        if (q) {
+          rowsMasuk = rowsMasuk.filter(row =>
+            row.some(v => String(v).toLowerCase().includes(q))
+          );
+        }
+        if (rowsMasuk.length) {
+          const wsMasuk = buatSheetDenganStyle(headerMasuk, rowsMasuk);
+          XLSX.utils.book_append_sheet(wb, wsMasuk, "Paket Masuk");
+          adaSheet = true;
+        }
+      }
+
+      // ── SHEET PAKET KELUAR (semua kolom, semua data) ──
+      if (filterMode === 'semua' || filterMode === 'keluar') {
+        const headerKeluar = (listDataKeluar[0] && listDataKeluar[0].length ? listDataKeluar[0] : DEFAULT_HEADER_KELUAR);
+        let rowsKeluar = [];
+        // Iterasi dari depan ke belakang (ascending) - nomor 1 adalah data paling awal
+        for (let i = 1; i < listDataKeluar.length; i++) {
+          const row = listDataKeluar[i];
+          if (!row) continue;
+          const kode = String(row[0] || '').trim();
+          const nama = String(row[2] || '').trim();
+          if (!kode && !nama) continue; // skip baris kosong
+          // Format Jam (kolom H, index 7) dari timestamp ISO menjadi HH:MM:SS
+          const rowFormatted = row.map((v, idx) => {
+            if (idx === 7 && v) { // Kolom H (Jam) - index 7
+              return formatTimestampToTime(v);
+            }
+            return v == null ? '' : v;
+          });
+          rowsKeluar.push(rowFormatted);
+        }
+        if (q) {
+          rowsKeluar = rowsKeluar.filter(row =>
+            row.some(v => String(v).toLowerCase().includes(q))
+          );
+        }
+        if (rowsKeluar.length) {
+          const wsKeluar = buatSheetDenganStyle(headerKeluar, rowsKeluar);
+          XLSX.utils.book_append_sheet(wb, wsKeluar, "Paket Keluar");
+          adaSheet = true;
+        }
+      }
+
+      if (!adaSheet) {
+        throw new Error('Tidak ada data untuk diexport.');
+      }
+
+      // Download
+      const filename = `Paket_${new Date().toISOString().slice(0,10)}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.querySelector('#exportLabel').innerText = originalLabel;
+      }, 500);
+
+    } catch (e) {
+      alert('Gagal export: ' + e.message);
+      btn.disabled = false;
+      btn.querySelector('#exportLabel').innerText = originalLabel;
+    }
+  }
+
+</script>
+
+<!-- ============================================================
+     TRAKTEER TIP OVERLAY EMBED
+     Ganti URL di href .trakteer-sidebar dan .trakteer-icon-btn
+     dengan link Trakteer kamu jika berbeda.
+     Script di bawah menampilkan floating overlay Trakteer.
+============================================================ -->
+<script
+  src="https://edge-cdn.trakteer.id/overlay/trbtn.min.js"
+  data-trbtn-id="bolangpacket"
+  data-trbtn-color="#be1e2d"
+  data-trbtn-size="40"
+  data-trbtn-position="none"
+  defer>
 </script>
 </body>
 </html>
