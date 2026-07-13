@@ -729,6 +729,39 @@
     .pg-btn:disabled { opacity: .4; cursor: not-allowed; }
     .pg-ellipsis { color: var(--text-muted); padding: 0 4px; }
 
+    /* ========== TRAKTEER DONASI ========== */
+    .trakteer-sidebar {
+      margin: 0 10px 14px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, #be1e2d 0%, #e8384f 100%);
+      color: white;
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer; border: none; width: calc(100% - 20px);
+      font-size: 12px; font-weight: 600; text-decoration: none;
+      transition: opacity .15s, transform .1s;
+      box-shadow: 0 2px 8px rgba(190,30,45,.35);
+    }
+    .trakteer-sidebar:hover { opacity: .88; transform: translateY(-1px); }
+    .trakteer-sidebar:active { transform: translateY(0); }
+    .trakteer-sidebar .trk-icon { font-size: 16px; flex-shrink: 0; }
+    .trakteer-sidebar .trk-text { line-height: 1.25; text-align: left; }
+    .trakteer-sidebar .trk-sub  { font-size: 10px; font-weight: 400; opacity: .85; display: block; }
+
+    /* Ikon kecil di topbar (muncul di mobile saja) */
+    .trakteer-icon-btn {
+      width: 34px; height: 34px;
+      border-radius: var(--radius-sm);
+      background: #be1e2d; color: white;
+      display: none; align-items: center; justify-content: center;
+      border: none; cursor: pointer; font-size: 15px;
+      transition: opacity .15s;
+    }
+    .trakteer-icon-btn:hover { opacity: .85; }
+    @media (max-width: 768px) {
+      .trakteer-icon-btn { display: inline-flex; }
+    }
+
     /* ========== RESPONSIVE ========== */
     @media (max-width: 768px) {
       .sidebar      { transform: translateX(-100%); }
@@ -820,6 +853,15 @@
       </div>
     </nav>
 
+    <!-- TRAKTEER DONASI -->
+    <a class="trakteer-sidebar" href="https://trakteer.id/bolangpacket/tip" target="_blank" rel="noopener" title="Dukung pengembang via Trakteer">
+      <span class="trk-icon">☕</span>
+      <span class="trk-text">
+        Dukung via Trakteer
+        <span class="trk-sub">Bantu developer tetap semangat!</span>
+      </span>
+    </a>
+
     <div class="sidebar-footer">
       <div class="user-avatar" id="sidebarAvatar">S</div>
       <div style="min-width:0; flex:1;">
@@ -841,6 +883,8 @@
       </div>
       <div class="topbar-right">
         <button class="icon-btn" onclick="refresh()" title="Refresh"><i class="ti ti-refresh"></i></button>
+        <!-- TRAKTEER (hanya muncul di mobile) -->
+        <a class="trakteer-icon-btn" href="https://trakteer.id/bolangpacket/tip" target="_blank" rel="noopener" title="Dukung via Trakteer">☕</a>
         <!-- DARK MODE TOGGLE -->
         <div class="dark-toggle-wrap" title="Toggle dark mode">
           <button class="dark-toggle" id="darkToggleBtn" onclick="toggleDarkMode()">
@@ -2276,6 +2320,21 @@
     }
   }
 
+</script>
+
+<!-- ============================================================
+     TRAKTEER TIP OVERLAY EMBED
+     Ganti URL di href .trakteer-sidebar dan .trakteer-icon-btn
+     dengan link Trakteer kamu jika berbeda.
+     Script di bawah menampilkan floating overlay Trakteer.
+============================================================ -->
+<script
+  src="https://edge-cdn.trakteer.id/overlay/trbtn.min.js"
+  data-trbtn-id="bolangpacket"
+  data-trbtn-color="#be1e2d"
+  data-trbtn-size="40"
+  data-trbtn-position="none"
+  defer>
 </script>
 </body>
 </html>
