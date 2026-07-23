@@ -79,6 +79,11 @@
       --amber-border:    #fde68a;
       --amber-text:      #92400e;
 
+      --purple:          #7c3aed;
+      --purple-bg:       #f5f0ff;
+      --purple-border:   #d8c7fb;
+      --purple-text:     #7c3aed;
+
       --sidebar-w: 210px;
       --topbar-h:  56px;
       --radius:    10px;
@@ -118,6 +123,11 @@
       --amber-bg:        #2d1f0a;
       --amber-border:    #78350f;
       --amber-text:      #fde68a;
+
+      --purple:          #a78bfa;
+      --purple-bg:       #2d1b69;
+      --purple-border:   #4c2f9e;
+      --purple-text:     #c4b5fd;
 
       --shadow-sm: 0 1px 3px rgba(0,0,0,.30);
       --shadow:    0 4px 16px rgba(0,0,0,.40);
@@ -762,6 +772,80 @@
       .trakteer-icon-btn { display: inline-flex; }
     }
 
+    /* ========== HALAMAN DOKUMEN ========== */
+    #page-dashboard { display: block; }
+    #page-dokumen   { display: none;  }
+
+    /* Status toggle pill */
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px 4px 7px;
+      border-radius: 999px; border: 1.5px solid;
+      font-size: 11.5px; font-weight: 500;
+      cursor: pointer; transition: opacity .15s;
+      white-space: nowrap; user-select: none;
+    }
+    .status-pill:hover { opacity: .82; }
+    .status-pill .pill-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .status-pill.belum {
+      background: var(--amber-bg); color: var(--amber-text); border-color: var(--amber-border);
+    }
+    .status-pill.belum .pill-dot { background: var(--amber); }
+    .status-pill.diambil {
+      background: var(--green-bg); color: var(--green-text); border-color: var(--green-border);
+    }
+    .status-pill.diambil .pill-dot { background: var(--green); }
+
+    /* Badge jenis dokumen */
+    .ket-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 500;
+    }
+    .ket-surat   { background: var(--accent-bg);  color: var(--accent-text); }
+    .ket-kartu   { background: var(--purple-bg);  color: var(--purple-text); }
+    .ket-dokumen { background: var(--amber-bg);   color: var(--amber-text);  }
+
+    /* Mini stat cards di atas tabel Dokumen */
+    .dok-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
+    .dok-stat  {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+    .dok-stat-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+    .dok-stat-label { font-size: 11.5px; color: var(--text-muted); }
+    .dok-stat-value { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+
+    .dok-stat-icon.blue  { background: var(--accent-bg); color: var(--accent); }
+    .dok-stat-icon.amber { background: var(--amber-bg);  color: var(--amber);  }
+    .dok-stat-icon.green { background: var(--green-bg);  color: var(--green);  }
+
+    /* Status pill: sedikit feedback saat ditekan (mobile tidak ada hover) */
+    .status-pill:active { transform: scale(.96); }
+
+    /* Pilihan Keterangan (Surat / Kartu / Dokumen) — segmented control */
+    .ket-select-row { display: flex; gap: 6px; }
+    .ket-choice {
+      flex: 1; padding: 9px 4px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border-strong); background: var(--surface);
+      color: var(--text-secondary); font-size: 12.5px; font-weight: 500;
+      text-align: center; cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .ket-choice.surat.active   { background: var(--accent-bg); border-color: var(--accent);      color: var(--accent-text); }
+    .ket-choice.kartu.active   { background: var(--purple-bg); border-color: var(--purple);       color: var(--purple-text); }
+    .ket-choice.dokumen.active { background: var(--amber-bg);  border-color: var(--amber-border); color: var(--amber-text); }
+
+    /* Tabel dokumen: kolom lebih banyak & bervariasi → lebar menyesuaikan isi + scroll horizontal di layar kecil */
+    #tabelDokumen { table-layout: auto; min-width: 720px; }
+
     /* ========== RESPONSIVE ========== */
     @media (max-width: 768px) {
       .sidebar      { transform: translateX(-100%); }
@@ -776,6 +860,8 @@
       .stats-grid  { gap: 8px; }
       .action-row  { gap: 8px; }
       .stat-value  { font-size: 24px; }
+      .dok-stats   { grid-template-columns: 1fr; }
+      .dok-stat    { padding: 10px 12px; }
     }
   </style>
 </head>
@@ -837,19 +923,22 @@
     </div>
 
     <nav class="nav-menu">
-      <div class="nav-item active" id="nav-dashboard">
+      <div class="nav-item active" id="nav-dashboard" onclick="setPage('dashboard'); setFilter('semua');">
         <i class="ti ti-layout-dashboard"></i>Dashboard
       </div>
-      <div class="nav-item" onclick="setNavActive('nav-masuk'); setFilter('masuk');">
+      <div class="nav-item" onclick="setPage('dashboard'); setNavActive('nav-masuk'); setFilter('masuk');">
         <i class="ti ti-package"></i>Paket masuk
       </div>
       <div class="nav-item" id="nav-masuk" style="display:none;"></div><!-- anchor only -->
-      <div class="nav-item" onclick="setNavActive('nav-keluar'); setFilter('keluar');">
+      <div class="nav-item" onclick="setPage('dashboard'); setNavActive('nav-keluar'); setFilter('keluar');">
         <i class="ti ti-truck-delivery"></i>Paket keluar
       </div>
       <div class="nav-item" id="nav-keluar" style="display:none;"></div>
       <div class="nav-item" onclick="bukaModalLaporan()">
         <i class="ti ti-file-description"></i>Memo / laporan
+      </div>
+      <div class="nav-item" id="nav-dokumen" onclick="setPage('dokumen')">
+        <i class="ti ti-mail"></i>Dokumen
       </div>
     </nav>
 
@@ -907,6 +996,9 @@
         <i class="ti ti-cloud-off"></i>
         <span>Data terakhir diperbarui pukul <strong id="offlineTime">--.--</strong> (mode offline)</span>
       </div>
+
+      <!-- ========== HALAMAN DASHBOARD ========== -->
+      <div id="page-dashboard">
 
       <!-- GREETING -->
       <div class="greeting">
@@ -1002,24 +1094,120 @@
         </div>
       </div>
 
+      </div><!-- /#page-dashboard (sebelumnya tidak ditutup) -->
+
+      <!-- ========== HALAMAN DOKUMEN (SURAT MASUK WARGA) ========== -->
+      <div id="page-dokumen">
+
+      <!-- GREETING -->
+      <div class="greeting">
+        <h1>Dokumen Warga 📬</h1>
+        <p>Pencatatan surat, kartu, dan dokumen masuk untuk warga</p>
+      </div>
+
+      <!-- MINI STATS -->
+      <div class="section-eyebrow">Ringkasan dokumen</div>
+      <div class="dok-stats">
+        <div class="dok-stat">
+          <div class="dok-stat-icon blue"><i class="ti ti-inbox"></i></div>
+          <div>
+            <div class="dok-stat-label">Total masuk</div>
+            <div class="dok-stat-value" id="dokStatTotal"><span class="spinner"></span></div>
+          </div>
+        </div>
+        <div class="dok-stat">
+          <div class="dok-stat-icon amber"><i class="ti ti-clock"></i></div>
+          <div>
+            <div class="dok-stat-label">Belum diambil</div>
+            <div class="dok-stat-value" id="dokStatBelum"><span class="spinner"></span></div>
+          </div>
+        </div>
+        <div class="dok-stat">
+          <div class="dok-stat-icon green"><i class="ti ti-checks"></i></div>
+          <div>
+            <div class="dok-stat-label">Sudah diambil</div>
+            <div class="dok-stat-value" id="dokStatDiambil"><span class="spinner"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTON -->
+      <div class="action-row" style="grid-template-columns:1fr;">
+        <button class="action-big blue" onclick="showFormDokumen()">
+          <i class="ti ti-plus"></i>Catat dokumen masuk
+        </button>
+      </div>
+
+      <!-- DAFTAR DOKUMEN -->
+      <div class="section-header">
+        <div class="section-title">Daftar dokumen masuk</div>
+        <div class="section-actions">
+          <button class="btn btn-ghost" onclick="exportDokumenExcel()" title="Download Excel">
+            <i class="ti ti-file-download"></i><span id="exportDokLabel">Export Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="riwayat-wrapper">
+        <div class="riwayat-top">
+          <div class="search-field" style="margin-bottom:10px;">
+            <i class="ti ti-search"></i>
+            <input type="text" id="inputCariDokumen"
+                   placeholder="Cari nomor resi, pemilik, atau pengirim…"
+                   oninput="sinkronSearchDokumen(this.value)">
+          </div>
+          <div class="filter-bar">
+            <button class="filter-tab active" id="fDokSemua"   onclick="setFilterDokumen('semua')">Semua</button>
+            <button class="filter-tab"        id="fDokBelum"   onclick="setFilterDokumen('belum')">Belum diambil</button>
+            <button class="filter-tab"        id="fDokDiambil" onclick="setFilterDokumen('diambil')">Sudah diambil</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table" id="tabelDokumen">
+            <thead>
+              <tr>
+                <th>No. Resi</th>
+                <th>Pemilik / Alamat</th>
+                <th>Pengirim</th>
+                <th>Jenis</th>
+                <th>Waktu masuk</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbDokumen">
+              <tr class="state-row"><td colspan="7"><span class="spinner"></span>Memuat data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- PAGINATION -->
+        <div class="pagination-bar hidden" id="paginationBarDokumen">
+          <div class="pagination-info" id="paginationInfoDokumen"></div>
+          <div class="pagination-controls" id="paginationControlsDokumen"></div>
+        </div>
+      </div>
+
+      </div><!-- /#page-dokumen -->
+
     </main>
   </div>
 
   <!-- MOBILE BOTTOM NAV -->
   <nav class="bottom-nav">
     <div class="bottom-nav-inner">
-      <button class="bot-item active" id="botDash" onclick="setNavActive('nav-dashboard'); setFilter('semua');">
+      <button class="bot-item active" id="botDash" onclick="setPage('dashboard'); setFilter('semua');">
         <i class="ti ti-home"></i>Beranda
       </button>
-      <button class="bot-item" onclick="setFilter('masuk');">
+      <button class="bot-item" id="botMasuk" onclick="setPage('dashboard'); setFilter('masuk');">
         <i class="ti ti-package"></i>Masuk
       </button>
-      <button class="fab" onclick="showForm()"><i class="ti ti-plus"></i></button>
-      <button class="bot-item" onclick="setFilter('keluar');">
+      <button class="fab" id="botFab" onclick="onFabClick()"><i class="ti ti-plus"></i></button>
+      <button class="bot-item" id="botKeluar" onclick="setPage('dashboard'); setFilter('keluar');">
         <i class="ti ti-truck-delivery"></i>Keluar
       </button>
-      <button class="bot-item" onclick="bukaModalLaporan()">
-        <i class="ti ti-report"></i>Laporan
+      <button class="bot-item" id="botDok" onclick="setPage('dokumen')">
+        <i class="ti ti-mail"></i>Dokumen
       </button>
     </div>
   </nav>
@@ -1216,6 +1404,109 @@
 
 
 <!-- ============================================================
+     MODAL: TAMBAH / EDIT DOKUMEN MASUK
+============================================================ -->
+<div class="overlay" id="modalDokumen">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="formDokumenTitle">Catat Dokumen Masuk</div>
+      <button class="close-btn" onclick="hideFormDokumen()"><i class="ti ti-x"></i></button>
+    </div>
+
+    <!-- Scanner khusus form Dokumen (elemen terpisah dari scanner Paket) -->
+    <div id="readerDokumen"></div>
+    <button id="btnCloseScannerDokumen" class="close-scanner-btn" style="display:none;" onclick="tutupScannerDokumen()">
+      <i class="ti ti-x"></i>Tutup Scanner
+    </button>
+
+    <form id="formDokumen" onsubmit="event.preventDefault(); kirimDataDokumen();">
+      <input type="hidden" id="rowDokumen" name="rowId">
+      <input type="hidden" id="dokStatusHidden"    name="status">
+      <input type="hidden" id="dokPengambilHidden" name="pengambil">
+      <input type="hidden" id="dokNoHpHidden"      name="noHp">
+
+      <div class="form-group">
+        <label class="form-label">Nomor Resi <span style="color:var(--red);">*</span></label>
+        <div class="input-addon">
+          <input type="text" id="dokResi" name="nomorResi" placeholder="Scan atau ketik nomor resi" required>
+          <button type="button" class="scan-btn open-scanner-btn-dokumen" onclick="bukaScannerDokumen()" title="Scan barcode">
+            <i class="ti ti-scan"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Pemilik / Alamat <span style="color:var(--red);">*</span></label>
+        <input type="text" id="dokPemilik" name="pemilikAlamat" placeholder="Nama pemilik atau alamat tujuan" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Pengirim</label>
+        <input type="text" id="dokPengirim" name="pengirim" placeholder="Nama pengirim / kurir / instansi">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Keterangan <span style="color:var(--red);">*</span></label>
+        <div class="ket-select-row">
+          <button type="button" class="ket-choice surat active" data-val="Surat"   onclick="pilihKeteranganDokumen('Surat', this)">Surat</button>
+          <button type="button" class="ket-choice kartu"        data-val="Kartu"   onclick="pilihKeteranganDokumen('Kartu', this)">Kartu</button>
+          <button type="button" class="ket-choice dokumen"      data-val="Dokumen" onclick="pilihKeteranganDokumen('Dokumen', this)">Dokumen</button>
+        </div>
+        <input type="hidden" id="dokKeterangan" name="keterangan" value="Surat">
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" onclick="hideFormDokumen()">Batal</button>
+        <button type="submit" class="btn btn-primary" id="btnSaveDokumen">
+          <i class="ti ti-device-floppy"></i>Simpan
+        </button>
+      </div>
+    </form>
+  </div>
+</div><!-- /#modalDokumen -->
+
+
+<!-- ============================================================
+     MODAL: KONFIRMASI PENGAMBILAN DOKUMEN
+============================================================ -->
+<div class="overlay" id="modalPengambil">
+  <div class="sheet" style="max-width:400px;">
+    <div class="sheet-header">
+      <div class="sheet-title">
+        <i class="ti ti-user-check" style="font-size:18px; vertical-align:middle; color:var(--green); margin-right:5px;"></i>
+        Konfirmasi Pengambilan
+      </div>
+      <button class="close-btn" onclick="tutupModalPengambil()"><i class="ti ti-x"></i></button>
+    </div>
+
+    <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:14px;">
+      Dokumen resi <strong id="pengambilResiInfo">–</strong> akan ditandai <strong style="color:var(--green-text);">sudah diambil</strong>.
+    </p>
+
+    <div class="form-group autocomplete-wrap">
+      <label class="form-label">Nama Pengambil <span style="color:var(--red);">*</span></label>
+      <input type="text" id="inputNamaPengambil" placeholder="Ketik nama pengambil…"
+             autocomplete="off" oninput="cariSaranPengambilDokumen()">
+      <div id="dropdownSaranPengambil"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">No. HP <span style="color:var(--red);">*</span></label>
+      <input type="text" id="inputNoHpPengambil" placeholder="08xxxxxxxxxx"
+             inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" onclick="tutupModalPengambil()">Batal</button>
+      <button type="button" class="btn btn-success" id="btnKonfirmasiPengambil" onclick="simpanPengambilDokumen()">
+        <i class="ti ti-check"></i>Tandai Diambil
+      </button>
+    </div>
+  </div>
+</div><!-- /#modalPengambil -->
+
+
+<!-- ============================================================
      JAVASCRIPT
 ============================================================ -->
 <script>
@@ -1234,6 +1525,21 @@
   let keranjangResi  = [];
   let isScanning     = false;
   let scanner;
+
+  /* ── STATE: HALAMAN DOKUMEN ────────────────────────────────────
+     Kolom sheet "Dokumen": A Nomor Resi, B Pemilik/Alamat, C Pengirim,
+     D Tanggal dan Jam, E Status, F Keterangan, G Pengambil, H No HP.
+     Sama seperti listDataMasuk/Keluar, baris index 0 = header,
+     nomor baris sheet sebenarnya = index array + 1.                */
+  let halamanAktif         = 'dashboard'; // 'dashboard' | 'dokumen'
+  let listDataDokumen      = [];
+  let filterModeDokumen    = 'semua';     // semua | belum | diambil
+  let currentPageDokumen   = 1;
+  let allFilteredRowsDokumen = [];
+  let isScanningDokumen    = false;
+  let scannerDokumen;
+  let idxDokumenDiproses   = null; // baris yang sedang dikonfirmasi di modal Pengambil
+  let searchTimeoutDokumen;
 
   /* ── AUTH ───────────────────────────────────────────────────── */
   function handleCredentialResponse(response) {
@@ -1476,7 +1782,10 @@
   }
 
   /* ── DATA LOADING ───────────────────────────────────────────── */
-  function refresh() { muatSemuaData(); }
+  function refresh() {
+    if (halamanAktif === 'dokumen') muatDataDokumen();
+    else muatSemuaData();
+  }
 
   async function muatSemuaData() {
     hideOfflineBanner();
@@ -1845,11 +2154,18 @@
   let searchTimeout;
   function sinkronSearch(val) {
     document.getElementById('inputCariTopbar').value = val;
-    document.getElementById('inputCariTabel').value  = val;
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-      currentPage = 1; // kembali ke halaman 1 saat search berubah
-      renderTabel();
+      if (halamanAktif === 'dokumen') {
+        const el = document.getElementById('inputCariDokumen');
+        if (el) el.value = val;
+        currentPageDokumen = 1;
+        renderTabelDokumen();
+      } else {
+        document.getElementById('inputCariTabel').value = val;
+        currentPage = 1; // kembali ke halaman 1 saat search berubah
+        renderTabel();
+      }
     }, 150);
   }
 
@@ -1865,6 +2181,7 @@
                 : f === 'masuk'  ? 'Hapus semua masuk'
                 :                  'Hapus semua keluar';
     document.getElementById('hapusLabel').innerText = label;
+    updateBottomNavActive('dashboard', f);
     renderTabel();
   }
 
@@ -1872,6 +2189,44 @@
   function setNavActive(id) {
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+
+  /* ── NAVIGASI HALAMAN (Dashboard ⇄ Dokumen) ─────────────────────
+     Aplikasi ini satu halaman (SPA sederhana): pindah "halaman"
+     cukup toggle display dua div utama + sinkronkan status aktif
+     di sidebar & bottom nav mobile.                                */
+  function setPage(page) {
+    halamanAktif = page;
+    const isDokumen = page === 'dokumen';
+
+    document.getElementById('page-dashboard').style.display = isDokumen ? 'none' : 'block';
+    document.getElementById('page-dokumen').style.display   = isDokumen ? 'block' : 'none';
+
+    // Default highlight sidebar; untuk nav-masuk/nav-keluar pemanggil
+    // akan meng-override lewat setNavActive() setelah ini (lihat onclick di HTML).
+    setNavActive(isDokumen ? 'nav-dokumen' : 'nav-dashboard');
+    updateBottomNavActive(page, filterMode);
+
+    // Placeholder search topbar biar kontekstual sesuai halaman
+    const topbarSearch = document.getElementById('inputCariTopbar');
+    if (topbarSearch) {
+      topbarSearch.placeholder = isDokumen
+        ? 'Cari resi, pemilik, atau pengirim…'
+        : 'Cari paket, resi, atau pemilik…';
+    }
+
+    if (isDokumen) muatDataDokumen();
+  }
+
+  /* Sinkronkan tombol aktif di bottom nav (mobile) sesuai halaman + filter */
+  function updateBottomNavActive(page, filter) {
+    document.querySelectorAll('.bot-item').forEach(el => el.classList.remove('active'));
+    let activeId = 'botDash';
+    if (page === 'dokumen')       activeId = 'botDok';
+    else if (filter === 'masuk')  activeId = 'botMasuk';
+    else if (filter === 'keluar') activeId = 'botKeluar';
+    const el = document.getElementById(activeId);
     if (el) el.classList.add('active');
   }
 
@@ -2052,8 +2407,11 @@
 
   // tutup dropdown saat klik di luar
   document.addEventListener('click', e => {
-    if (!e.target.closest('.autocomplete-wrap'))
+    if (!e.target.closest('.autocomplete-wrap')) {
       document.getElementById('dropdownSaran').style.display = 'none';
+      const dp = document.getElementById('dropdownSaranPengambil');
+      if (dp) dp.style.display = 'none';
+    }
   });
 
   /* ── KERANJANG RESI ─────────────────────────────────────────── */
@@ -2147,7 +2505,9 @@
     overlay.addEventListener('click', e => {
       if (e.target === overlay) {
         overlay.classList.remove('open');
-        if (overlay.id === 'modalForm') hideForm();
+        if (overlay.id === 'modalForm')      hideForm();
+        if (overlay.id === 'modalDokumen')   hideFormDokumen();
+        if (overlay.id === 'modalPengambil') tutupModalPengambil();
       }
     });
   });
@@ -2317,6 +2677,471 @@
       alert('Gagal export: ' + e.message);
       btn.disabled = false;
       btn.querySelector('#exportLabel').innerText = originalLabel;
+    }
+  }
+
+  /* ============================================================
+     MODUL DOKUMEN (SURAT MASUK WARGA)
+     ============================================================
+     Kolom sheet "Dokumen" (index array, 0 = baris header):
+       0 Nomor Resi | 1 Pemilik/Alamat | 2 Pengirim | 3 Tanggal dan Jam
+       4 Status     | 5 Keterangan     | 6 Pengambil | 7 No HP
+     Konvensi indeks sama seperti listDataMasuk/Keluar:
+     listDataDokumen[i] (i>=1) ⇔ baris ke (i+1) di sheet.             */
+
+  /* ── LOAD DATA ──────────────────────────────────────────────── */
+  async function muatDataDokumen() {
+    document.getElementById('tbDokumen').innerHTML =
+      '<tr class="state-row"><td colspan="7"><span class="spinner"></span>Memuat data…</td></tr>';
+    ['dokStatTotal','dokStatBelum','dokStatDiambil'].forEach(id => {
+      document.getElementById(id).innerHTML = '<span class="spinner"></span>';
+    });
+
+    try {
+      const res  = await fetchWithTimeout(`${SCRIPT_URL}?type=dokumen`);
+      const data = await res.json();
+      listDataDokumen = Array.isArray(data) ? data : [];
+      tampilkanStatsDokumen(listDataDokumen);
+      renderTabelDokumen();
+    } catch (e) {
+      console.error(e);
+      document.getElementById('tbDokumen').innerHTML = `
+        <tr class="state-row-error">
+          <td colspan="7">
+            <div class="error-box">
+              <div class="error-title"><i class="ti ti-alert-triangle"></i>Gagal memuat data dokumen</div>
+              <p class="error-desc">Periksa koneksi internet, lalu coba lagi.</p>
+              <button class="btn btn-primary" onclick="muatDataDokumen()">
+                <i class="ti ti-refresh"></i>Coba Lagi
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      ['dokStatTotal','dokStatBelum','dokStatDiambil'].forEach(id => {
+        document.getElementById(id).innerText = '–';
+      });
+    }
+  }
+
+  function tampilkanStatsDokumen(data) {
+    let total = 0, belum = 0, diambil = 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row) continue;
+      const resi    = String(row[0] || '').trim();
+      const pemilik = String(row[1] || '').trim();
+      if (!resi && !pemilik) continue; // skip baris kosong
+      total++;
+      const status = String(row[4] || '').trim().toLowerCase();
+      if (status === 'diambil') diambil++; else belum++;
+    }
+    document.getElementById('dokStatTotal').innerText   = total;
+    document.getElementById('dokStatBelum').innerText   = belum;
+    document.getElementById('dokStatDiambil').innerText = diambil;
+  }
+
+  /* ── FORMAT & HELPER ────────────────────────────────────────── */
+  function ketBadgeClass(ket) {
+    const k = String(ket || '').trim().toLowerCase();
+    if (k === 'kartu')   return 'kartu';
+    if (k === 'dokumen') return 'dokumen';
+    return 'surat';
+  }
+
+  // Format nilai "Tanggal dan Jam" (dikirim Apps Script sbg ISO string)
+  // menjadi "23 Jul 2026, 14:30" memakai zona waktu Asia/Jakarta.
+  function formatTanggalJamDokumen(value) {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value); // fallback: tampilkan apa adanya
+    const opt = { timeZone: 'Asia/Jakarta' };
+    const tgl = new Intl.DateTimeFormat('id-ID', { ...opt, day: '2-digit', month: 'short', year: 'numeric' }).format(d);
+    const jam = new Intl.DateTimeFormat('id-ID', { ...opt, hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+    return `${tgl}, ${jam}`;
+  }
+
+  /* ── FILTER + SEARCH ────────────────────────────────────────── */
+  function setFilterDokumen(f) {
+    filterModeDokumen  = f;
+    currentPageDokumen = 1;
+    const mapId = { semua: 'fDokSemua', belum: 'fDokBelum', diambil: 'fDokDiambil' };
+    Object.values(mapId).forEach(id => document.getElementById(id).classList.remove('active'));
+    document.getElementById(mapId[f]).classList.add('active');
+    renderTabelDokumen();
+  }
+
+  function sinkronSearchDokumen(val) {
+    const topbar = document.getElementById('inputCariTopbar');
+    if (topbar) topbar.value = val;
+    clearTimeout(searchTimeoutDokumen);
+    searchTimeoutDokumen = setTimeout(() => {
+      currentPageDokumen = 1;
+      renderTabelDokumen();
+    }, 150);
+  }
+
+  function kumpulkanRowsDokumen() {
+    const q = (document.getElementById('inputCariDokumen').value || '').toLowerCase().trim();
+    let rows = [];
+
+    // Terbaru ditampilkan di atas
+    for (let i = listDataDokumen.length - 1; i >= 1; i--) {
+      const row = listDataDokumen[i];
+      if (!row) continue;
+      const resi      = String(row[0] || '').trim();
+      const pemilik   = String(row[1] || '').trim();
+      const pengirim  = String(row[2] || '').trim();
+      const waktu     = row[3] || '';
+      const status    = String(row[4] || 'Belum Diambil').trim();
+      const ket       = String(row[5] || '').trim();
+      const pengambil = String(row[6] || '').trim();
+      const noHp      = String(row[7] || '').trim();
+      if (!resi && !pemilik) continue; // skip baris kosong
+
+      const sudahDiambil = status.toLowerCase() === 'diambil';
+      if (filterModeDokumen === 'belum'   && sudahDiambil)  continue;
+      if (filterModeDokumen === 'diambil' && !sudahDiambil) continue;
+
+      rows.push({ idx: i, resi, pemilik, pengirim, waktu, status, ket, pengambil, noHp, sudahDiambil });
+    }
+
+    if (q) {
+      rows = rows.filter(r =>
+        r.resi.toLowerCase().includes(q) ||
+        r.pemilik.toLowerCase().includes(q) ||
+        r.pengirim.toLowerCase().includes(q)
+      );
+    }
+    return rows;
+  }
+
+  /* ── TABEL + PAGINATION (pola sama seperti tabel dashboard, 50 baris/halaman) ── */
+  function renderPaginationBarDokumen(total, page) {
+    const bar    = document.getElementById('paginationBarDokumen');
+    const infoEl = document.getElementById('paginationInfoDokumen');
+    const ctrlEl = document.getElementById('paginationControlsDokumen');
+    const totalPage = Math.ceil(total / PAGE_SIZE);
+
+    if (total <= PAGE_SIZE) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+
+    const start = (page - 1) * PAGE_SIZE + 1;
+    const end   = Math.min(page * PAGE_SIZE, total);
+    infoEl.textContent = `${start}–${end} dari ${total} dokumen`;
+
+    let html = `<button class="pg-btn" onclick="goToPageDokumen(${page-1})" ${page===1?'disabled':''} title="Sebelumnya"><i class="ti ti-chevron-left"></i></button>`;
+
+    const delta = 2;
+    let pages = new Set([1, totalPage]);
+    for (let p = Math.max(1, page - delta); p <= Math.min(totalPage, page + delta); p++) pages.add(p);
+    pages = [...pages].sort((a,b) => a-b);
+
+    let prev = 0;
+    for (const p of pages) {
+      if (prev && p - prev > 1) html += `<span class="pg-ellipsis">…</span>`;
+      html += `<button class="pg-btn${p===page?' active':''}" onclick="goToPageDokumen(${p})">${p}</button>`;
+      prev = p;
+    }
+
+    html += `<button class="pg-btn" onclick="goToPageDokumen(${page+1})" ${page===totalPage?'disabled':''} title="Berikutnya"><i class="ti ti-chevron-right"></i></button>`;
+    ctrlEl.innerHTML = html;
+  }
+
+  function goToPageDokumen(p) {
+    const totalPage = Math.ceil(allFilteredRowsDokumen.length / PAGE_SIZE);
+    if (p < 1 || p > totalPage) return;
+    currentPageDokumen = p;
+    renderHalamanTabelDokumen();
+    document.getElementById('tabelDokumen').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderHalamanTabelDokumen() {
+    const tbody   = document.getElementById('tbDokumen');
+    const total   = allFilteredRowsDokumen.length;
+    const start   = (currentPageDokumen - 1) * PAGE_SIZE;
+    const halaman = allFilteredRowsDokumen.slice(start, start + PAGE_SIZE);
+
+    if (!halaman.length) {
+      tbody.innerHTML = `<tr class="state-row"><td colspan="7">Tidak ada dokumen ditemukan</td></tr>`;
+      document.getElementById('paginationBarDokumen').classList.add('hidden');
+      return;
+    }
+
+    tbody.innerHTML = halaman.map(r => {
+      const statusLabel = r.sudahDiambil
+        ? `Diambil${r.pengambil ? ' – ' + r.pengambil : ''}`
+        : 'Belum diambil';
+      const statusTitle = r.sudahDiambil
+        ? `Diambil oleh ${r.pengambil || '-'}${r.noHp ? ' • ' + r.noHp : ''} — ketuk untuk ubah`
+        : 'Ketuk untuk tandai sudah diambil';
+      return `
+      <tr>
+        <td style="font-family:monospace; font-weight:500;" title="${r.resi}">${r.resi || '—'}</td>
+        <td title="${r.pemilik}">${r.pemilik || '—'}</td>
+        <td title="${r.pengirim}">${r.pengirim || '—'}</td>
+        <td><span class="ket-badge ket-${ketBadgeClass(r.ket)}">${r.ket || 'Surat'}</span></td>
+        <td>${formatTanggalJamDokumen(r.waktu)}</td>
+        <td>
+          <span class="status-pill ${r.sudahDiambil ? 'diambil' : 'belum'}" onclick="toggleStatusDokumen(${r.idx})" title="${statusTitle}">
+            <span class="pill-dot"></span>${statusLabel}
+          </span>
+        </td>
+        <td>
+          <button class="tbl-btn edit" onclick="editDataDokumen(${r.idx})" title="Edit"><i class="ti ti-edit"></i></button>
+          <button class="tbl-btn del"  onclick="hapusDataDokumen(${r.idx + 1})" title="Hapus"><i class="ti ti-trash"></i></button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    renderPaginationBarDokumen(total, currentPageDokumen);
+  }
+
+  function renderTabelDokumen() {
+    allFilteredRowsDokumen = kumpulkanRowsDokumen();
+    const totalPage = Math.ceil(allFilteredRowsDokumen.length / PAGE_SIZE);
+    if (currentPageDokumen > totalPage) currentPageDokumen = 1;
+    renderHalamanTabelDokumen();
+  }
+
+  /* ── FORM MODAL: TAMBAH / EDIT DOKUMEN ──────────────────────── */
+  function showFormDokumen(edit = false) {
+    document.getElementById('formDokumenTitle').innerText = edit ? 'Edit Dokumen' : 'Catat Dokumen Masuk';
+    document.getElementById('modalDokumen').classList.add('open');
+    if (!edit) {
+      document.getElementById('formDokumen').reset();
+      document.getElementById('rowDokumen').value = '';
+      pilihKeteranganDokumen('Surat', document.querySelector('.ket-choice.surat'));
+      document.getElementById('dokStatusHidden').value    = 'Belum Diambil';
+      document.getElementById('dokPengambilHidden').value = '';
+      document.getElementById('dokNoHpHidden').value      = '';
+    }
+  }
+
+  function hideFormDokumen() {
+    document.getElementById('modalDokumen').classList.remove('open');
+    if (isScanningDokumen) tutupScannerDokumen();
+  }
+
+  function pilihKeteranganDokumen(val, btnEl) {
+    document.getElementById('dokKeterangan').value = val;
+    document.querySelectorAll('.ket-choice').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+  }
+
+  function editDataDokumen(idx) {
+    const row = listDataDokumen[idx];
+    if (!row) return;
+    showFormDokumen(true);
+    document.getElementById('rowDokumen').value  = idx + 1;
+    document.getElementById('dokResi').value     = row[0] || '';
+    document.getElementById('dokPemilik').value  = row[1] || '';
+    document.getElementById('dokPengirim').value = row[2] || '';
+
+    const ket    = row[5] || 'Surat';
+    const btnKet = document.querySelector(`.ket-choice[data-val="${ket}"]`) || document.querySelector('.ket-choice.surat');
+    pilihKeteranganDokumen(ket, btnKet);
+
+    document.getElementById('dokStatusHidden').value    = row[4] || 'Belum Diambil';
+    document.getElementById('dokPengambilHidden').value = row[6] || '';
+    document.getElementById('dokNoHpHidden').value      = row[7] || '';
+  }
+
+  function kirimDataDokumen() {
+    const f        = document.getElementById('formDokumen');
+    const rowInput = document.getElementById('rowDokumen');
+    const btn      = document.getElementById('btnSaveDokumen');
+
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner"></span>Menyimpan…';
+
+    const fd = new FormData(f);
+    fd.append('formType', 'dokumen');
+    if (rowInput.value) {
+      fd.append('action', 'edit');
+      fd.append('row', rowInput.value);
+    }
+
+    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
+      .then(() => {
+        rowInput.value = '';
+        hideFormDokumen();
+        muatDataDokumen();
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
+      })
+      .catch(e => {
+        alert('Gagal menyimpan: ' + e);
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
+      });
+  }
+
+  function hapusDataDokumen(num) {
+    if (!confirm('Hapus data dokumen ini?')) return;
+    fetch(`${SCRIPT_URL}?action=delete&type=dokumen&row=${num}`, { mode: 'no-cors' })
+      .then(() => muatDataDokumen());
+  }
+
+  /* ── SCANNER (khusus form Dokumen, elemen terpisah dari scanner Paket) ── */
+  function bukaScannerDokumen() {
+    document.querySelectorAll('.open-scanner-btn-dokumen').forEach(b => b.style.display = 'none');
+    document.getElementById('readerDokumen').style.display          = 'block';
+    document.getElementById('btnCloseScannerDokumen').style.display = 'block';
+    if (!isScanningDokumen) {
+      scannerDokumen = new Html5QrcodeScanner('readerDokumen', { fps: 10, qrbox: { width: 250, height: 150 } });
+      scannerDokumen.render(text => {
+        document.getElementById('dokResi').value = text;
+        tutupScannerDokumen();
+      });
+      isScanningDokumen = true;
+    }
+  }
+
+  function tutupScannerDokumen() {
+    if (scannerDokumen) {
+      scannerDokumen.clear().then(() => {
+        document.getElementById('readerDokumen').style.display          = 'none';
+        document.getElementById('btnCloseScannerDokumen').style.display = 'none';
+        document.querySelectorAll('.open-scanner-btn-dokumen').forEach(b => b.style.display = 'flex');
+        isScanningDokumen = false;
+      }).catch(console.error);
+    }
+  }
+
+  /* ── TOGGLE STATUS: Belum diambil ⇄ Diambil ─────────────────────
+     Belum → Diambil : buka modal, wajib isi nama pengambil + no HP.
+     Diambil → Belum : konfirmasi ringan, langsung kembalikan status. */
+  function toggleStatusDokumen(idx) {
+    const row = listDataDokumen[idx];
+    if (!row) return;
+    const statusSaatIni = String(row[4] || '').trim().toLowerCase();
+    const sudahDiambil  = statusSaatIni === 'diambil';
+
+    if (sudahDiambil) {
+      if (!confirm('Kembalikan status dokumen ini ke "Belum diambil"?')) return;
+      prosesUpdateStatusDokumen(idx, 'Belum Diambil', '', '');
+    } else {
+      bukaModalPengambil(idx);
+    }
+  }
+
+  function bukaModalPengambil(idx) {
+    idxDokumenDiproses = idx;
+    const row = listDataDokumen[idx];
+    document.getElementById('pengambilResiInfo').innerText = (row && row[0]) ? row[0] : '(tanpa nomor resi)';
+    document.getElementById('inputNamaPengambil').value = '';
+    document.getElementById('inputNoHpPengambil').value = '';
+    document.getElementById('modalPengambil').classList.add('open');
+  }
+
+  function tutupModalPengambil() {
+    document.getElementById('modalPengambil').classList.remove('open');
+    idxDokumenDiproses = null;
+  }
+
+  function simpanPengambilDokumen() {
+    const nama = document.getElementById('inputNamaPengambil').value.trim();
+    const hp   = document.getElementById('inputNoHpPengambil').value.trim();
+    if (!nama || !hp) { alert('Nama pengambil dan No. HP wajib diisi.'); return; }
+    const idx = idxDokumenDiproses;
+    tutupModalPengambil();
+    prosesUpdateStatusDokumen(idx, 'Diambil', nama, hp);
+  }
+
+  async function prosesUpdateStatusDokumen(idx, statusBaru, pengambil, noHp) {
+    const rowNum = idx + 1; // konvensi: baris sheet = index array + 1 (index 0 = header)
+    const fd = new URLSearchParams();
+    fd.append('action', 'updateStatusDokumen');
+    fd.append('type', 'dokumen');
+    fd.append('row', rowNum);
+    fd.append('status', statusBaru);
+    fd.append('pengambil', pengambil);
+    fd.append('noHp', noHp);
+
+    try {
+      await fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      muatDataDokumen();
+    }
+  }
+
+  /* ── AUTOCOMPLETE PENGAMBIL (pakai daftar kontak yang sama dengan Paket Keluar) ── */
+  function cariSaranPengambilDokumen() {
+    const q        = document.getElementById('inputNamaPengambil').value.toLowerCase().trim();
+    const dropdown = document.getElementById('dropdownSaranPengambil');
+    dropdown.innerHTML = '';
+    if (!q) { dropdown.style.display = 'none'; return; }
+
+    let ada = false;
+    for (const nama in memoriLokal) {
+      if (nama.includes(q)) {
+        ada = true;
+        const el     = document.createElement('div');
+        el.className = 'saran-item';
+        const rapi   = nama.replace(/\b\w/g, l => l.toUpperCase());
+        el.innerHTML = `<div class="saran-name">${rapi}</div><div class="saran-sub">${memoriLokal[nama]}</div>`;
+        el.onclick = () => {
+          document.getElementById('inputNamaPengambil').value = rapi;
+          document.getElementById('inputNoHpPengambil').value = memoriLokal[nama];
+          dropdown.style.display = 'none';
+        };
+        dropdown.appendChild(el);
+      }
+    }
+    dropdown.style.display = ada ? 'block' : 'none';
+  }
+
+  /* ── FAB (tombol + di mobile): kontekstual sesuai halaman aktif ──
+     Catatan: onFabClick() sebelumnya dipanggil di HTML tapi belum
+     pernah didefinisikan (tombol + di mobile tidak berfungsi). Sekalian dibenerin di sini. */
+  function onFabClick() {
+    if (halamanAktif === 'dokumen') showFormDokumen();
+    else showForm();
+  }
+
+  /* ── EXPORT EXCEL DOKUMEN ───────────────────────────────────── */
+  async function exportDokumenExcel() {
+    const btn   = document.querySelector('[onclick="exportDokumenExcel()"]');
+    const label = btn ? btn.querySelector('#exportDokLabel') : null;
+    const originalLabel = label ? label.innerText : 'Export Excel';
+    if (btn)   btn.disabled = true;
+    if (label) label.innerText = 'Memproses…';
+
+    try {
+      await ensureXLSX();
+
+      const headerDokumen = (listDataDokumen[0] && listDataDokumen[0].length)
+        ? listDataDokumen[0]
+        : ['Nomor Resi','Pemilik/Alamat','Pengirim','Tanggal dan Jam','Status','Keterangan','Pengambil','No HP'];
+
+      let rows = [];
+      for (let i = 1; i < listDataDokumen.length; i++) {
+        const row = listDataDokumen[i];
+        if (!row) continue;
+        const resi    = String(row[0] || '').trim();
+        const pemilik = String(row[1] || '').trim();
+        if (!resi && !pemilik) continue;
+        rows.push(row.map((v, ix) => (ix === 3 && v) ? formatTanggalJamDokumen(v) : (v == null ? '' : v)));
+      }
+
+      if (!rows.length) throw new Error('Tidak ada data dokumen untuk diexport.');
+
+      const wb = XLSX.utils.book_new();
+      const ws = buatSheetDenganStyle(headerDokumen, rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Dokumen');
+      XLSX.writeFile(wb, `Dokumen_Warga_${new Date().toISOString().slice(0,10)}.xlsx`);
+
+      setTimeout(() => {
+        if (btn)   btn.disabled = false;
+        if (label) label.innerText = originalLabel;
+      }, 500);
+
+    } catch (e) {
+      alert('Gagal export: ' + e.message);
+      if (btn)   btn.disabled = false;
+      if (label) label.innerText = originalLabel;
     }
   }
 
