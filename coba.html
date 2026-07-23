@@ -1225,7 +1225,7 @@
       <button class="close-btn" onclick="hideForm()"><i class="ti ti-x"></i></button>
     </div>
 
-    <!-- Tab Masuk / Keluar -->
+    <!-- Tab Masuk / Keluar / Dokumen -->
     <div class="form-tab-bar">
       <button class="form-tab active" id="formTabMasuk" onclick="gantiTabForm('masuk')">
         <i class="ti ti-package"></i>Masuk
@@ -1233,9 +1233,12 @@
       <button class="form-tab" id="formTabKeluar" onclick="gantiTabForm('keluar')">
         <i class="ti ti-truck-delivery"></i>Keluar
       </button>
+      <button class="form-tab" id="formTabDokumen" onclick="gantiTabForm('dokumen')">
+        <i class="ti ti-mail-opened"></i>Dokumen
+      </button>
     </div>
 
-    <!-- Scanner (shared) -->
+    <!-- Scanner paket (shared masuk & keluar) -->
     <div id="reader"></div>
     <button id="btnCloseScanner" class="close-scanner-btn" style="display:none;" onclick="tutupScanner()">
       <i class="ti ti-x"></i>Tutup Scanner
@@ -1341,6 +1344,57 @@
           <button type="button" class="btn btn-ghost" onclick="hideForm()">Batal</button>
           <button type="submit" class="btn btn-primary" id="btnSaveKeluar">
             <i class="ti ti-device-floppy"></i>Simpan
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ---- FORM DOKUMEN (BARU - di dalam modal utama) ---- -->
+    <div id="area-dokumen" style="display:none;">
+
+      <!-- Scanner khusus form dokumen di modal utama -->
+      <div id="readerDokMain"></div>
+      <button id="btnCloseScannerDokMain" class="close-scanner-btn" style="display:none;"
+              onclick="tutupScannerDokMain()">
+        <i class="ti ti-x"></i>Tutup Scanner
+      </button>
+
+      <form id="formDokMain" onsubmit="event.preventDefault(); kirimDataDokumenDashboard();">
+
+        <div class="form-group">
+          <label class="form-label">Nomor Resi <span style="color:var(--red);">*</span></label>
+          <div class="input-addon">
+            <input type="text" id="dokMainResi" placeholder="Scan atau ketik nomor resi" required>
+            <button type="button" class="scan-btn" onclick="bukaScannerDokMain()" title="Scan barcode">
+              <i class="ti ti-scan"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Pemilik / Alamat <span style="color:var(--red);">*</span></label>
+          <input type="text" id="dokMainPemilik" placeholder="Nama pemilik atau alamat tujuan" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Pengirim</label>
+          <input type="text" id="dokMainPengirim" placeholder="Nama pengirim / kurir / instansi">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Keterangan <span style="color:var(--red);">*</span></label>
+          <div class="ket-select-row" id="ketSelectDokMain">
+            <button type="button" class="ket-choice surat active" onclick="pilihKeteranganDokMain('Surat', this)">Surat</button>
+            <button type="button" class="ket-choice kartu"        onclick="pilihKeteranganDokMain('Kartu', this)">Kartu</button>
+            <button type="button" class="ket-choice dokumen"      onclick="pilihKeteranganDokMain('Dokumen', this)">Dokumen</button>
+          </div>
+          <input type="hidden" id="dokMainKeterangan" value="Surat">
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" onclick="hideForm()">Batal</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveDokMain">
+            <i class="ti ti-device-floppy"></i>Simpan ke Dokumen
           </button>
         </div>
       </form>
@@ -1538,6 +1592,77 @@
   let allFilteredRowsDokumen = [];
   let isScanningDokumen    = false;
   let scannerDokumen;
+
+  /* ── SCANNER DOKUMEN (di dalam modal utama / dashboard) ─────────
+     Terpisah dari scannerDokumen yang dipakai oleh modalDokumen,
+     supaya keduanya bisa berjalan independen tanpa konflik elemen.  */
+  let isScanningDokMain = false;
+  let scannerDokMain;
+
+  function bukaScannerDokMain() {
+    document.getElementById('readerDokMain').style.display          = 'block';
+    document.getElementById('btnCloseScannerDokMain').style.display = 'block';
+    if (!isScanningDokMain) {
+      scannerDokMain = new Html5QrcodeScanner('readerDokMain', { fps: 10, qrbox: { width: 250, height: 150 } });
+      scannerDokMain.render(text => {
+        document.getElementById('dokMainResi').value = text;
+        tutupScannerDokMain();
+      });
+      isScanningDokMain = true;
+    }
+  }
+
+  function tutupScannerDokMain() {
+    if (scannerDokMain) {
+      scannerDokMain.clear().then(() => {
+        document.getElementById('readerDokMain').style.display          = 'none';
+        document.getElementById('btnCloseScannerDokMain').style.display = 'none';
+        isScanningDokMain = false;
+      }).catch(console.error);
+    }
+  }
+
+  /* Pilih keterangan (Surat / Kartu / Dokumen) di form dokumen dashboard */
+  function pilihKeteranganDokMain(val, btnEl) {
+    document.getElementById('dokMainKeterangan').value = val;
+    document.querySelectorAll('#ketSelectDokMain .ket-choice').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+  }
+
+  /* Submit form dokumen dari dashboard — kirim ke sheet Dokumen */
+  function kirimDataDokumenDashboard() {
+    const btn        = document.getElementById('btnSaveDokMain');
+    const resi       = (document.getElementById('dokMainResi').value      || '').trim();
+    const pemilik    = (document.getElementById('dokMainPemilik').value   || '').trim();
+    const pengirim   = (document.getElementById('dokMainPengirim').value  || '').trim();
+    const keterangan = (document.getElementById('dokMainKeterangan').value || 'Surat');
+
+    if (!resi || !pemilik) return;
+
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner"></span>Menyimpan…';
+
+    const fd = new FormData();
+    fd.append('formType',   'dokumen');
+    fd.append('resi',        resi);
+    fd.append('pemilik',     pemilik);
+    fd.append('pengirim',    pengirim);
+    fd.append('keterangan',  keterangan);
+
+    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
+      .then(() => {
+        hideForm();
+        // Muat ulang data dokumen agar tabel Dokumen ter-update
+        muatDokumen();
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan ke Dokumen';
+      })
+      .catch(err => {
+        alert('Gagal menyimpan dokumen: ' + err);
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan ke Dokumen';
+      });
+  }
   let idxDokumenDiproses   = null; // baris yang sedang dikonfirmasi di modal Pengambil
   let searchTimeoutDokumen;
 
@@ -2243,19 +2368,31 @@
     document.getElementById('rowKeluar').value = '';
     document.getElementById('formMasuk').reset();
     document.getElementById('formKeluar').reset();
+    // Reset form dokumen di modal utama
+    document.getElementById('formDokMain').reset();
+    document.getElementById('dokMainKeterangan').value = 'Surat';
+    document.querySelectorAll('#ketSelectDokMain .ket-choice').forEach(b => b.classList.remove('active'));
+    const suratBtn = document.querySelector('#ketSelectDokMain .ket-choice.surat');
+    if (suratBtn) suratBtn.classList.add('active');
     keranjangResi = [];
     renderKeranjang();
     if (isScanning) tutupScanner();
+    if (isScanningDokMain) tutupScannerDokMain();
   }
 
   function gantiTabForm(t) {
     formMode = t;
-    document.getElementById('area-masuk').style.display  = t === 'masuk'  ? 'block' : 'none';
-    document.getElementById('area-keluar').style.display = t === 'keluar' ? 'block' : 'none';
-    ['masuk','keluar'].forEach(tab => {
-      const btn = document.getElementById('formTab' + tab.charAt(0).toUpperCase() + tab.slice(1));
-      btn.classList.toggle('active', tab === t);
+    document.getElementById('area-masuk').style.display   = t === 'masuk'   ? 'block' : 'none';
+    document.getElementById('area-keluar').style.display  = t === 'keluar'  ? 'block' : 'none';
+    document.getElementById('area-dokumen').style.display = t === 'dokumen' ? 'block' : 'none';
+    ['masuk','keluar','dokumen'].forEach(tab => {
+      const id  = 'formTab' + tab.charAt(0).toUpperCase() + tab.slice(1);
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.toggle('active', tab === t);
     });
+    // Tutup scanner yang mungkin masih terbuka saat ganti tab
+    if (t !== 'masuk' && t !== 'keluar' && isScanning) tutupScanner();
+    if (t !== 'dokumen' && isScanningDokMain) tutupScannerDokMain();
   }
 
   /* ── EDIT / HAPUS ───────────────────────────────────────────── */
