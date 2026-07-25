@@ -463,6 +463,84 @@
       border-bottom: none;
     }
 
+    /* ========== FILTER TANGGAL (kalender: Dari–Sampai) + URUTKAN — khusus Dokumen ========== */
+    .filter-toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .filter-toggle-row .search-field { flex: 1 1 160px; min-width: 140px; margin-bottom: 0; }
+
+    .filter-icon-btn {
+      position: relative; flex-shrink: 0;
+      width: 38px; height: 38px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm);
+      background: var(--surface); border: 1px solid var(--border-strong);
+      color: var(--text-secondary); font-size: 16px; cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .filter-icon-btn:hover  { background: var(--surface-2); }
+    .filter-icon-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+
+    .filter-count {
+      position: absolute; top: -6px; right: -6px;
+      min-width: 16px; height: 16px; padding: 0 3px;
+      border-radius: 999px; background: var(--accent); color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+      display: none;
+    }
+
+    .sort-select-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .sort-select-wrap i { color: var(--text-muted); font-size: 15px; }
+
+    .sort-select {
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b90a8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding: 8px 26px 8px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+      background-color: var(--surface); color: var(--text-primary);
+      font-size: 12px; font-weight: 500; outline: none; cursor: pointer;
+      max-width: 96px;
+    }
+    .sort-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+
+    .filter-date-panel {
+      display: none;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      padding: 12px; margin-bottom: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .filter-date-panel.open { display: grid; }
+    .filter-date-panel .fd-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .filter-date-panel label {
+      font-size: 10px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .filter-date-panel input[type="date"] {
+      width: 100%; padding: 7px 8px; border: 1px solid var(--border-strong); border-radius: 6px;
+      background-color: var(--surface); color: var(--text-primary);
+      font-size: 12.5px; font-family: inherit; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      color-scheme: light;
+    }
+    .filter-date-panel input[type="date"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .filter-date-panel .fd-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 2px; }
+    .filter-date-panel .fd-reset {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      background: transparent; border: none; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px;
+      border-radius: 6px; transition: color .15s, background .15s;
+    }
+    .filter-date-panel .fd-reset:hover { color: var(--red); background: var(--red-bg); }
+    .filter-date-panel .fd-reset i { font-size: 13px; }
+
+    html.dark .filter-date-panel input[type="date"] { color-scheme: dark; }
+
+    @media (max-width: 420px) {
+      .filter-date-panel { grid-template-columns: 1fr; }
+    }
+
     .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 460px; }
 
     .data-table thead th {
@@ -1150,12 +1228,43 @@
 
       <div class="riwayat-wrapper">
         <div class="riwayat-top">
-          <div class="search-field" style="margin-bottom:10px;">
-            <i class="ti ti-search"></i>
-            <input type="text" id="inputCariDokumen"
-                   placeholder="Cari nomor resi, pemilik, atau pengirim…"
-                   oninput="sinkronSearchDokumen(this.value)">
+          <div class="filter-toggle-row">
+            <div class="search-field">
+              <i class="ti ti-search"></i>
+              <input type="text" id="inputCariDokumen"
+                     placeholder="Cari nomor resi, pemilik, atau pengirim…"
+                     oninput="sinkronSearchDokumen(this.value)">
+            </div>
+            <button type="button" class="filter-icon-btn" id="btnToggleFilterTanggalDokumen"
+                    onclick="toggleFilterTanggalDokumen()" title="Filter tanggal">
+              <i class="ti ti-calendar"></i>
+              <span class="filter-count" id="filterCountDokumen">0</span>
+            </button>
+            <div class="sort-select-wrap">
+              <i class="ti ti-arrows-sort"></i>
+              <select class="sort-select" id="sortDokumen" onchange="terapkanSortDokumen()" title="Urutkan">
+                <option value="terbaru">Terbaru</option>
+                <option value="terlama">Terlama</option>
+              </select>
+            </div>
           </div>
+
+          <div class="filter-date-panel" id="filterDatePanelDokumen">
+            <div class="fd-group">
+              <label for="filterDariDokumen">Dari Tanggal</label>
+              <input type="date" id="filterDariDokumen" onchange="terapkanFilterTanggalDokumen()">
+            </div>
+            <div class="fd-group">
+              <label for="filterSampaiDokumen">Sampai Tanggal</label>
+              <input type="date" id="filterSampaiDokumen" onchange="terapkanFilterTanggalDokumen()">
+            </div>
+            <div class="fd-actions">
+              <button type="button" class="fd-reset" onclick="resetFilterTanggalDokumen()">
+                <i class="ti ti-x"></i>Reset filter tanggal
+              </button>
+            </div>
+          </div>
+
           <div class="filter-bar">
             <button class="filter-tab active" id="fDokSemua"   onclick="setFilterDokumen('semua')">Semua</button>
             <button class="filter-tab"        id="fDokBelum"   onclick="setFilterDokumen('belum')">Belum diambil</button>
@@ -2898,6 +3007,55 @@
     return `${tgl}, ${jam}`;
   }
 
+  // Nama bulan Indonesia → indeks 0-11, dipakai untuk mem-parsing nilai "Tanggal dan Jam"
+  // yang ternyata berupa teks sudah-diformat dari backend (bukan ISO baku), mis. "24 Juli 2026 • 06:24:03".
+  const NAMA_BULAN_KE_IDX = {
+    januari:0, februari:1, maret:2, april:3, mei:4, juni:5,
+    juli:6, agustus:7, september:8, oktober:9, november:10, desember:11,
+    jan:0, feb:1, mar:2, apr:3, jun:5, jul:6, agu:7, ags:7, sep:8, okt:9, nov:10, des:11
+  };
+
+  // Ubah nilai mentah "Tanggal dan Jam" (row[3]) menjadi epoch ms, apa pun bentuknya:
+  //  1) Kalau sudah format baku yang dikenali `new Date()` (ISO, dsb) → pakai langsung.
+  //  2) Kalau ternyata teks hasil format Indonesia (mis. "24 Juli 2026 • 06:24:03") → parse manual,
+  //     dianggap dalam zona waktu Asia/Jakarta (WIB, UTC+7) — sama seperti yang tampil di kolom Waktu Masuk.
+  // Mengembalikan NaN kalau benar-benar tidak terbaca, supaya baris itu diperlakukan "tanpa tanggal valid".
+  function parseWaktuDokumenMs(value) {
+    if (!value) return NaN;
+    const str = String(value).trim();
+
+    const langsung = new Date(str).getTime();
+    if (!isNaN(langsung)) return langsung;
+
+    const m = str.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})(?:\D+(\d{1,2})[.:](\d{2})(?:[.:](\d{2}))?)?/);
+    if (!m) return NaN;
+    const tanggal = parseInt(m[1], 10);
+    const bulan   = NAMA_BULAN_KE_IDX[m[2].toLowerCase()];
+    const tahun   = parseInt(m[3], 10);
+    if (bulan === undefined || isNaN(tanggal) || isNaN(tahun)) return NaN;
+    const jam   = m[4] !== undefined ? parseInt(m[4], 10) : 0;
+    const menit = m[5] !== undefined ? parseInt(m[5], 10) : 0;
+    const detik = m[6] !== undefined ? parseInt(m[6], 10) : 0;
+
+    const pad = n => String(n).padStart(2, '0');
+    const t = new Date(`${tahun}-${pad(bulan + 1)}-${pad(tanggal)}T${pad(jam)}:${pad(menit)}:${pad(detik)}+07:00`).getTime();
+    return isNaN(t) ? NaN : t;
+  }
+
+  // Ubah nilai input kalender "YYYY-MM-DD" menjadi batas awal/akhir hari itu
+  // (00:00:00 / 23:59:59.999) di zona waktu Asia/Jakarta (WIB = UTC+7, tanpa DST),
+  // supaya konsisten dengan formatTanggalJamDokumen() yang juga pakai Asia/Jakarta.
+  function awalHariJakarta(tanggalStr) {
+    if (!tanggalStr) return null;
+    const t = new Date(tanggalStr + 'T00:00:00+07:00').getTime();
+    return isNaN(t) ? null : t;
+  }
+  function akhirHariJakarta(tanggalStr) {
+    if (!tanggalStr) return null;
+    const t = new Date(tanggalStr + 'T23:59:59.999+07:00').getTime();
+    return isNaN(t) ? null : t;
+  }
+
   /* ── FILTER + SEARCH ────────────────────────────────────────── */
   function setFilterDokumen(f) {
     filterModeDokumen  = f;
@@ -2905,6 +3063,49 @@
     const mapId = { semua: 'fDokSemua', belum: 'fDokBelum', diambil: 'fDokDiambil' };
     Object.values(mapId).forEach(id => document.getElementById(id).classList.remove('active'));
     document.getElementById(mapId[f]).classList.add('active');
+    renderTabelDokumen();
+  }
+
+  /* ── FILTER TANGGAL (kalender: Dari–Sampai) + URUTKAN ───────── */
+  function toggleFilterTanggalDokumen() {
+    document.getElementById('filterDatePanelDokumen').classList.toggle('open');
+    perbaruiBadgeFilterDokumen();
+  }
+
+  function perbaruiBadgeFilterDokumen() {
+    const ids = ['filterDariDokumen', 'filterSampaiDokumen'];
+    const n = ids.reduce((total, id) => total + (document.getElementById(id).value !== '' ? 1 : 0), 0);
+
+    const badge = document.getElementById('filterCountDokumen');
+    badge.textContent   = n;
+    badge.style.display = n > 0 ? 'inline-flex' : 'none';
+
+    const panelTerbuka = document.getElementById('filterDatePanelDokumen').classList.contains('open');
+    document.getElementById('btnToggleFilterTanggalDokumen').classList.toggle('active', n > 0 || panelTerbuka);
+  }
+
+  function terapkanFilterTanggalDokumen() {
+    // Cegah salah pilih: "Sampai" tidak boleh lebih awal dari "Dari", dan sebaliknya
+    const dari   = document.getElementById('filterDariDokumen');
+    const sampai = document.getElementById('filterSampaiDokumen');
+    sampai.min = dari.value   || '';
+    dari.max   = sampai.value || '';
+
+    currentPageDokumen = 1;
+    perbaruiBadgeFilterDokumen();
+    renderTabelDokumen();
+  }
+
+  function resetFilterTanggalDokumen() {
+    const dari   = document.getElementById('filterDariDokumen');
+    const sampai = document.getElementById('filterSampaiDokumen');
+    dari.value = ''; sampai.value = '';
+    dari.max   = ''; sampai.min   = '';
+    terapkanFilterTanggalDokumen();
+  }
+
+  function terapkanSortDokumen() {
+    currentPageDokumen = 1;
     renderTabelDokumen();
   }
 
@@ -2920,10 +3121,16 @@
 
   function kumpulkanRowsDokumen() {
     const q = (document.getElementById('inputCariDokumen').value || '').toLowerCase().trim();
+
+    const fDari      = document.getElementById('filterDariDokumen').value;   // "" atau "YYYY-MM-DD"
+    const fSampai    = document.getElementById('filterSampaiDokumen').value;
+    const batasAwal  = awalHariJakarta(fDari);   // ms epoch, atau null jika kosong
+    const batasAkhir = akhirHariJakarta(fSampai);
+    const adaFilterTanggal = batasAwal !== null || batasAkhir !== null;
+
     let rows = [];
 
-    // Terbaru ditampilkan di atas
-    for (let i = listDataDokumen.length - 1; i >= 1; i--) {
+    for (let i = 1; i < listDataDokumen.length; i++) {
       const row = listDataDokumen[i];
       if (!row) continue;
       const resi      = String(row[0] || '').trim();
@@ -2940,6 +3147,14 @@
       if (filterModeDokumen === 'belum'   && sudahDiambil)  continue;
       if (filterModeDokumen === 'diambil' && !sudahDiambil) continue;
 
+      // Filter kalender Dari–Sampai (berdasarkan "Waktu masuk", zona Asia/Jakarta)
+      if (adaFilterTanggal) {
+        const t = parseWaktuDokumenMs(waktu);
+        if (isNaN(t)) continue; // tidak punya tanggal valid → tidak cocok filter tanggal apa pun
+        if (batasAwal  !== null && t < batasAwal)  continue;
+        if (batasAkhir !== null && t > batasAkhir) continue;
+      }
+
       rows.push({ idx: i, resi, pemilik, pengirim, waktu, status, ket, pengambil, noHp, sudahDiambil });
     }
 
@@ -2950,7 +3165,24 @@
         r.pengirim.toLowerCase().includes(q)
       );
     }
-    return rows;
+
+    return urutkanRowsDokumen(rows);
+  }
+
+  // Urutkan hasil sesuai dropdown #sortDokumen berdasarkan "Waktu masuk" saja.
+  // Default 'terbaru' = Waktu masuk terbaru dahulu.
+  function urutkanRowsDokumen(rows) {
+    const selEl = document.getElementById('sortDokumen');
+    const mode  = selEl ? selEl.value : 'terbaru';
+    const waktuMs = r => { const t = parseWaktuDokumenMs(r.waktu); return isNaN(t) ? 0 : t; };
+
+    const hasil = rows.slice();
+    if (mode === 'terlama') {
+      hasil.sort((a, b) => waktuMs(a) - waktuMs(b));
+    } else {
+      hasil.sort((a, b) => waktuMs(b) - waktuMs(a)); // 'terbaru' (default)
+    }
+    return hasil;
   }
 
   /* ── TABEL + PAGINATION (pola sama seperti tabel dashboard, 50 baris/halaman) ── */
