@@ -1643,11 +1643,11 @@
     btn.innerHTML = '<span class="spinner"></span>Menyimpan…';
 
     const fd = new FormData();
-    fd.append('formType',   'dokumen');
-    fd.append('resi',        resi);
-    fd.append('pemilik',     pemilik);
-    fd.append('pengirim',    pengirim);
-    fd.append('keterangan',  keterangan);
+    fd.append('formType',      'dokumen');
+    fd.append('nomorResi',      resi);
+    fd.append('pemilikAlamat',  pemilik);
+    fd.append('pengirim',       pengirim);
+    fd.append('keterangan',     keterangan);
 
     fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
       .then(() => {
