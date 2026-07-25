@@ -1652,8 +1652,9 @@
     fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
       .then(() => {
         hideForm();
-        // Muat ulang data dokumen agar tabel Dokumen ter-update
-        muatDokumen();
+        // muatDataDokumen() me-refresh tabel Dokumen di halaman Surat & Dokumen
+        // (nama fungsi yang benar — bukan muatDokumen)
+        if (typeof muatDataDokumen === 'function') muatDataDokumen();
         btn.disabled  = false;
         btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan ke Dokumen';
       })
