@@ -463,6 +463,84 @@
       border-bottom: none;
     }
 
+    /* ========== FILTER TANGGAL (Hari/Tanggal/Bulan/Tahun) + URUTKAN — khusus Dokumen ========== */
+    .filter-toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .filter-toggle-row .search-field { flex: 1 1 160px; min-width: 140px; margin-bottom: 0; }
+
+    .filter-icon-btn {
+      position: relative; flex-shrink: 0;
+      width: 38px; height: 38px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm);
+      background: var(--surface); border: 1px solid var(--border-strong);
+      color: var(--text-secondary); font-size: 16px; cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .filter-icon-btn:hover  { background: var(--surface-2); }
+    .filter-icon-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+
+    .filter-count {
+      position: absolute; top: -6px; right: -6px;
+      min-width: 16px; height: 16px; padding: 0 3px;
+      border-radius: 999px; background: var(--accent); color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+      display: none;
+    }
+
+    .sort-select-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .sort-select-wrap i { color: var(--text-muted); font-size: 15px; }
+
+    .filter-date-panel select,
+    .sort-select {
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b90a8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+
+    .sort-select {
+      padding: 8px 26px 8px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+      background-color: var(--surface); color: var(--text-primary);
+      font-size: 12px; font-weight: 500; outline: none; cursor: pointer;
+      max-width: 112px;
+    }
+    .sort-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+
+    .filter-date-panel {
+      display: none;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 12px; margin-bottom: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .filter-date-panel.open { display: grid; }
+    .filter-date-panel .fd-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .filter-date-panel label {
+      font-size: 10px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .filter-date-panel select {
+      width: 100%; padding: 8px 22px 8px 8px; border: 1px solid var(--border-strong); border-radius: 6px;
+      background-color: var(--surface); color: var(--text-primary);
+      font-size: 12.5px; outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .filter-date-panel select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .filter-date-panel .fd-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 2px; }
+    .filter-date-panel .fd-reset {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      background: transparent; border: none; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px;
+      border-radius: 6px; transition: color .15s, background .15s;
+    }
+    .filter-date-panel .fd-reset:hover { color: var(--red); background: var(--red-bg); }
+    .filter-date-panel .fd-reset i { font-size: 13px; }
+
+    @media (max-width: 640px) {
+      .filter-date-panel { grid-template-columns: repeat(2, 1fr); }
+    }
+
     .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 460px; }
 
     .data-table thead th {
@@ -1150,12 +1228,91 @@
 
       <div class="riwayat-wrapper">
         <div class="riwayat-top">
-          <div class="search-field" style="margin-bottom:10px;">
-            <i class="ti ti-search"></i>
-            <input type="text" id="inputCariDokumen"
-                   placeholder="Cari nomor resi, pemilik, atau pengirim…"
-                   oninput="sinkronSearchDokumen(this.value)">
+          <div class="filter-toggle-row">
+            <div class="search-field">
+              <i class="ti ti-search"></i>
+              <input type="text" id="inputCariDokumen"
+                     placeholder="Cari nomor resi, pemilik, atau pengirim…"
+                     oninput="sinkronSearchDokumen(this.value)">
+            </div>
+            <button type="button" class="filter-icon-btn" id="btnToggleFilterTanggalDokumen"
+                    onclick="toggleFilterTanggalDokumen()" title="Filter hari/tanggal/bulan/tahun">
+              <i class="ti ti-filter"></i>
+              <span class="filter-count" id="filterCountDokumen">0</span>
+            </button>
+            <div class="sort-select-wrap">
+              <i class="ti ti-arrows-sort"></i>
+              <select class="sort-select" id="sortDokumen" onchange="terapkanSortDokumen()" title="Urutkan">
+                <option value="terbaru">Terbaru</option>
+                <option value="terlama">Terlama</option>
+                <option value="nama-az">Nama A–Z</option>
+                <option value="nama-za">Nama Z–A</option>
+              </select>
+            </div>
           </div>
+
+          <div class="filter-date-panel" id="filterDatePanelDokumen">
+            <div class="fd-group">
+              <label for="filterHariDokumen">Hari</label>
+              <select id="filterHariDokumen" onchange="terapkanFilterTanggalDokumen()">
+                <option value="">Semua Hari</option>
+                <option value="1">Senin</option>
+                <option value="2">Selasa</option>
+                <option value="3">Rabu</option>
+                <option value="4">Kamis</option>
+                <option value="5">Jumat</option>
+                <option value="6">Sabtu</option>
+                <option value="0">Minggu</option>
+              </select>
+            </div>
+            <div class="fd-group">
+              <label for="filterTanggalDokumen">Tanggal</label>
+              <select id="filterTanggalDokumen" onchange="terapkanFilterTanggalDokumen()">
+                <option value="">Semua Tanggal</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+                <option value="13">13</option><option value="14">14</option><option value="15">15</option>
+                <option value="16">16</option><option value="17">17</option><option value="18">18</option>
+                <option value="19">19</option><option value="20">20</option><option value="21">21</option>
+                <option value="22">22</option><option value="23">23</option><option value="24">24</option>
+                <option value="25">25</option><option value="26">26</option><option value="27">27</option>
+                <option value="28">28</option><option value="29">29</option><option value="30">30</option>
+                <option value="31">31</option>
+              </select>
+            </div>
+            <div class="fd-group">
+              <label for="filterBulanDokumen">Bulan</label>
+              <select id="filterBulanDokumen" onchange="terapkanFilterTanggalDokumen()">
+                <option value="">Semua Bulan</option>
+                <option value="0">Januari</option>
+                <option value="1">Februari</option>
+                <option value="2">Maret</option>
+                <option value="3">April</option>
+                <option value="4">Mei</option>
+                <option value="5">Juni</option>
+                <option value="6">Juli</option>
+                <option value="7">Agustus</option>
+                <option value="8">September</option>
+                <option value="9">Oktober</option>
+                <option value="10">November</option>
+                <option value="11">Desember</option>
+              </select>
+            </div>
+            <div class="fd-group">
+              <label for="filterTahunDokumen">Tahun</label>
+              <select id="filterTahunDokumen" onchange="terapkanFilterTanggalDokumen()">
+                <option value="">Semua Tahun</option>
+              </select>
+            </div>
+            <div class="fd-actions">
+              <button type="button" class="fd-reset" onclick="resetFilterTanggalDokumen()">
+                <i class="ti ti-x"></i>Reset filter tanggal
+              </button>
+            </div>
+          </div>
+
           <div class="filter-bar">
             <button class="filter-tab active" id="fDokSemua"   onclick="setFilterDokumen('semua')">Semua</button>
             <button class="filter-tab"        id="fDokBelum"   onclick="setFilterDokumen('belum')">Belum diambil</button>
@@ -1643,17 +1800,18 @@
     btn.innerHTML = '<span class="spinner"></span>Menyimpan…';
 
     const fd = new FormData();
-    fd.append('formType',   'dokumen');
-    fd.append('resi',        resi);
-    fd.append('pemilik',     pemilik);
-    fd.append('pengirim',    pengirim);
-    fd.append('keterangan',  keterangan);
+    fd.append('formType',      'dokumen');
+    fd.append('nomorResi',      resi);
+    fd.append('pemilikAlamat',  pemilik);
+    fd.append('pengirim',       pengirim);
+    fd.append('keterangan',     keterangan);
 
     fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
       .then(() => {
         hideForm();
-        // Muat ulang data dokumen agar tabel Dokumen ter-update
-        muatDokumen();
+        // muatDataDokumen() me-refresh tabel Dokumen di halaman Surat & Dokumen
+        // (nama fungsi yang benar — bukan muatDokumen)
+        if (typeof muatDataDokumen === 'function') muatDataDokumen();
         btn.disabled  = false;
         btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan ke Dokumen';
       })
@@ -2838,6 +2996,7 @@
       const res  = await fetchWithTimeout(`${SCRIPT_URL}?type=dokumen`);
       const data = await res.json();
       listDataDokumen = Array.isArray(data) ? data : [];
+      isiOpsiTahunDokumen();
       tampilkanStatsDokumen(listDataDokumen);
       renderTabelDokumen();
     } catch (e) {
@@ -2897,6 +3056,28 @@
     return `${tgl}, ${jam}`;
   }
 
+  // Ambil komponen { hari, tanggal, bulan, tahun } dari value "Tanggal dan Jam",
+  // dihitung di zona waktu Asia/Jakarta — konsisten dengan formatTanggalJamDokumen().
+  // hari: 0=Minggu…6=Sabtu (sama seperti Date.getDay()). bulan: 0=Januari…11=Desember.
+  const HARI_EN_KE_IDX = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+  function komponenTanggalDokumen(value) {
+    if (!value) return null;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Jakarta',
+      weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric'
+    }).formatToParts(d);
+    const ambil  = t => (parts.find(p => p.type === t) || {}).value;
+    const hariEn = ambil('weekday');
+    return {
+      tahun:   parseInt(ambil('year'), 10),
+      bulan:   parseInt(ambil('month'), 10) - 1,
+      tanggal: parseInt(ambil('day'), 10),
+      hari:    (hariEn in HARI_EN_KE_IDX) ? HARI_EN_KE_IDX[hariEn] : null
+    };
+  }
+
   /* ── FILTER + SEARCH ────────────────────────────────────────── */
   function setFilterDokumen(f) {
     filterModeDokumen  = f;
@@ -2905,6 +3086,64 @@
     Object.values(mapId).forEach(id => document.getElementById(id).classList.remove('active'));
     document.getElementById(mapId[f]).classList.add('active');
     renderTabelDokumen();
+  }
+
+  /* ── FILTER HARI/TANGGAL/BULAN/TAHUN + URUTKAN ──────────────── */
+  function toggleFilterTanggalDokumen() {
+    document.getElementById('filterDatePanelDokumen').classList.toggle('open');
+    perbaruiBadgeFilterDokumen();
+  }
+
+  function perbaruiBadgeFilterDokumen() {
+    const ids = ['filterHariDokumen', 'filterTanggalDokumen', 'filterBulanDokumen', 'filterTahunDokumen'];
+    const n = ids.reduce((total, id) => total + (document.getElementById(id).value !== '' ? 1 : 0), 0);
+
+    const badge = document.getElementById('filterCountDokumen');
+    badge.textContent   = n;
+    badge.style.display = n > 0 ? 'inline-flex' : 'none';
+
+    const panelTerbuka = document.getElementById('filterDatePanelDokumen').classList.contains('open');
+    document.getElementById('btnToggleFilterTanggalDokumen').classList.toggle('active', n > 0 || panelTerbuka);
+  }
+
+  function terapkanFilterTanggalDokumen() {
+    currentPageDokumen = 1;
+    perbaruiBadgeFilterDokumen();
+    renderTabelDokumen();
+  }
+
+  function resetFilterTanggalDokumen() {
+    ['filterHariDokumen', 'filterTanggalDokumen', 'filterBulanDokumen', 'filterTahunDokumen']
+      .forEach(id => { document.getElementById(id).value = ''; });
+    terapkanFilterTanggalDokumen();
+  }
+
+  function terapkanSortDokumen() {
+    currentPageDokumen = 1;
+    renderTabelDokumen();
+  }
+
+  // Isi ulang opsi dropdown Tahun sesuai tahun yang benar-benar ada di data,
+  // dipanggil setiap kali data dokumen dimuat/diperbarui. Pilihan sebelumnya
+  // dipertahankan jika tahunnya masih ada di daftar baru.
+  function isiOpsiTahunDokumen() {
+    const sel = document.getElementById('filterTahunDokumen');
+    if (!sel) return;
+    const nilaiSebelumnya = sel.value;
+
+    const tahunSet = new Set();
+    for (let i = 1; i < listDataDokumen.length; i++) {
+      const row = listDataDokumen[i];
+      if (!row) continue;
+      const komp = komponenTanggalDokumen(row[3]);
+      if (komp) tahunSet.add(komp.tahun);
+    }
+
+    const daftarTahun = [...tahunSet].sort((a, b) => b - a);
+    sel.innerHTML = '<option value="">Semua Tahun</option>' +
+      daftarTahun.map(t => `<option value="${t}">${t}</option>`).join('');
+
+    if (daftarTahun.some(t => String(t) === nilaiSebelumnya)) sel.value = nilaiSebelumnya;
   }
 
   function sinkronSearchDokumen(val) {
@@ -2919,10 +3158,16 @@
 
   function kumpulkanRowsDokumen() {
     const q = (document.getElementById('inputCariDokumen').value || '').toLowerCase().trim();
+
+    const fHari    = document.getElementById('filterHariDokumen').value;
+    const fTanggal = document.getElementById('filterTanggalDokumen').value;
+    const fBulan   = document.getElementById('filterBulanDokumen').value;
+    const fTahun   = document.getElementById('filterTahunDokumen').value;
+    const adaFilterTanggal = fHari !== '' || fTanggal !== '' || fBulan !== '' || fTahun !== '';
+
     let rows = [];
 
-    // Terbaru ditampilkan di atas
-    for (let i = listDataDokumen.length - 1; i >= 1; i--) {
+    for (let i = 1; i < listDataDokumen.length; i++) {
       const row = listDataDokumen[i];
       if (!row) continue;
       const resi      = String(row[0] || '').trim();
@@ -2939,6 +3184,16 @@
       if (filterModeDokumen === 'belum'   && sudahDiambil)  continue;
       if (filterModeDokumen === 'diambil' && !sudahDiambil) continue;
 
+      // Filter Hari / Tanggal / Bulan / Tahun (berdasarkan "Waktu masuk", zona Asia/Jakarta)
+      if (adaFilterTanggal) {
+        const komp = komponenTanggalDokumen(waktu);
+        if (!komp) continue; // tidak punya tanggal valid → tidak cocok filter tanggal apa pun
+        if (fHari    !== '' && komp.hari    !== parseInt(fHari, 10))    continue;
+        if (fTanggal !== '' && komp.tanggal !== parseInt(fTanggal, 10)) continue;
+        if (fBulan   !== '' && komp.bulan   !== parseInt(fBulan, 10))   continue;
+        if (fTahun   !== '' && komp.tahun   !== parseInt(fTahun, 10))   continue;
+      }
+
       rows.push({ idx: i, resi, pemilik, pengirim, waktu, status, ket, pengambil, noHp, sudahDiambil });
     }
 
@@ -2949,7 +3204,32 @@
         r.pengirim.toLowerCase().includes(q)
       );
     }
-    return rows;
+
+    return urutkanRowsDokumen(rows);
+  }
+
+  // Urutkan hasil sesuai dropdown #sortDokumen. Default 'terbaru' = Waktu masuk terbaru dahulu.
+  function urutkanRowsDokumen(rows) {
+    const selEl = document.getElementById('sortDokumen');
+    const mode  = selEl ? selEl.value : 'terbaru';
+    const waktuMs = r => { const t = new Date(r.waktu).getTime(); return isNaN(t) ? 0 : t; };
+
+    const hasil = rows.slice();
+    switch (mode) {
+      case 'terlama':
+        hasil.sort((a, b) => waktuMs(a) - waktuMs(b));
+        break;
+      case 'nama-az':
+        hasil.sort((a, b) => a.pemilik.localeCompare(b.pemilik, 'id', { sensitivity: 'base' }));
+        break;
+      case 'nama-za':
+        hasil.sort((a, b) => b.pemilik.localeCompare(a.pemilik, 'id', { sensitivity: 'base' }));
+        break;
+      case 'terbaru':
+      default:
+        hasil.sort((a, b) => waktuMs(b) - waktuMs(a));
+    }
+    return hasil;
   }
 
   /* ── TABEL + PAGINATION (pola sama seperti tabel dashboard, 50 baris/halaman) ── */
