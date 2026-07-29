@@ -2712,11 +2712,38 @@
     btn.disabled  = true;
     btn.innerHTML = '<span class="spinner"></span>Mengirim…';
 
-    const toBase64 = file => new Promise((res, rej) => {
-      const rd = new FileReader();
-      rd.readAsDataURL(file);
-      rd.onload  = () => res(rd.result.split(',')[1]);
-      rd.onerror = rej;
+    // ─── Canvas-based toBase64 ───────────────────────────────────────
+    // FileReader lama mengirim raw JPEG termasuk EXIF rotation tag.
+    // HP modern simpan foto landscape di file, pakai EXIF "putar 90°".
+    // Backend baca dimensi raw → rasio kebalik → gambar lonjong.
+    //
+    // Fix: Canvas browser otomatis terapkan EXIF saat drawImage()
+    // (Chrome 81+, Firefox 66+, Safari 15+), sehingga gambar yang
+    // dikirim ke backend sudah benar orientasi & dimensinya.
+    // Sekaligus resize agar tidak terlalu besar dan tidak timeout.
+    // ────────────────────────────────────────────────────────────────
+    const toBase64 = (file) => new Promise((resolve, reject) => {
+      if (!file) { resolve(''); return; }
+      const MAKS_PX  = 1400;  // panjang sisi terpanjang setelah resize
+      const KUALITAS = 0.88;  // kualitas JPEG (0-1)
+      const img      = new Image();
+      const objUrl   = URL.createObjectURL(file);
+      img.onload = () => {
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+        if (w > MAKS_PX || h > MAKS_PX) {
+          if (w > h) { h = Math.round(h * MAKS_PX / w); w = MAKS_PX; }
+          else       { w = Math.round(w * MAKS_PX / h); h = MAKS_PX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width  = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(objUrl);
+        resolve(canvas.toDataURL('image/jpeg', KUALITAS).split(',')[1]);
+      };
+      img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('Gagal baca gambar')); };
+      img.src = objUrl;
     });
 
     try {
@@ -3007,6 +3034,41 @@
     return `${tgl}, ${jam}`;
   }
 
+  // Nama bulan Indonesia → indeks 0-11, dipakai untuk mem-parsing nilai "Tanggal dan Jam"
+  // yang ternyata berupa teks sudah-diformat dari backend (bukan ISO baku), mis. "24 Juli 2026 • 06:24:03".
+  const NAMA_BULAN_KE_IDX = {
+    januari:0, februari:1, maret:2, april:3, mei:4, juni:5,
+    juli:6, agustus:7, september:8, oktober:9, november:10, desember:11,
+    jan:0, feb:1, mar:2, apr:3, jun:5, jul:6, agu:7, ags:7, sep:8, okt:9, nov:10, des:11
+  };
+
+  // Ubah nilai mentah "Tanggal dan Jam" (row[3]) menjadi epoch ms, apa pun bentuknya:
+  //  1) Kalau sudah format baku yang dikenali `new Date()` (ISO, dsb) → pakai langsung.
+  //  2) Kalau ternyata teks hasil format Indonesia (mis. "24 Juli 2026 • 06:24:03") → parse manual,
+  //     dianggap dalam zona waktu Asia/Jakarta (WIB, UTC+7) — sama seperti yang tampil di kolom Waktu Masuk.
+  // Mengembalikan NaN kalau benar-benar tidak terbaca, supaya baris itu diperlakukan "tanpa tanggal valid".
+  function parseWaktuDokumenMs(value) {
+    if (!value) return NaN;
+    const str = String(value).trim();
+
+    const langsung = new Date(str).getTime();
+    if (!isNaN(langsung)) return langsung;
+
+    const m = str.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})(?:\D+(\d{1,2})[.:](\d{2})(?:[.:](\d{2}))?)?/);
+    if (!m) return NaN;
+    const tanggal = parseInt(m[1], 10);
+    const bulan   = NAMA_BULAN_KE_IDX[m[2].toLowerCase()];
+    const tahun   = parseInt(m[3], 10);
+    if (bulan === undefined || isNaN(tanggal) || isNaN(tahun)) return NaN;
+    const jam   = m[4] !== undefined ? parseInt(m[4], 10) : 0;
+    const menit = m[5] !== undefined ? parseInt(m[5], 10) : 0;
+    const detik = m[6] !== undefined ? parseInt(m[6], 10) : 0;
+
+    const pad = n => String(n).padStart(2, '0');
+    const t = new Date(`${tahun}-${pad(bulan + 1)}-${pad(tanggal)}T${pad(jam)}:${pad(menit)}:${pad(detik)}+07:00`).getTime();
+    return isNaN(t) ? NaN : t;
+  }
+
   // Ubah nilai input kalender "YYYY-MM-DD" menjadi batas awal/akhir hari itu
   // (00:00:00 / 23:59:59.999) di zona waktu Asia/Jakarta (WIB = UTC+7, tanpa DST),
   // supaya konsisten dengan formatTanggalJamDokumen() yang juga pakai Asia/Jakarta.
@@ -3114,7 +3176,7 @@
 
       // Filter kalender Dari–Sampai (berdasarkan "Waktu masuk", zona Asia/Jakarta)
       if (adaFilterTanggal) {
-        const t = new Date(waktu).getTime();
+        const t = parseWaktuDokumenMs(waktu);
         if (isNaN(t)) continue; // tidak punya tanggal valid → tidak cocok filter tanggal apa pun
         if (batasAwal  !== null && t < batasAwal)  continue;
         if (batasAkhir !== null && t > batasAkhir) continue;
@@ -3139,7 +3201,7 @@
   function urutkanRowsDokumen(rows) {
     const selEl = document.getElementById('sortDokumen');
     const mode  = selEl ? selEl.value : 'terbaru';
-    const waktuMs = r => { const t = new Date(r.waktu).getTime(); return isNaN(t) ? 0 : t; };
+    const waktuMs = r => { const t = parseWaktuDokumenMs(r.waktu); return isNaN(t) ? 0 : t; };
 
     const hasil = rows.slice();
     if (mode === 'terlama') {
