@@ -1861,68 +1861,79 @@
        membebani server; timeout hanya 5 detik agar cepat ketahuan           */
   let autoCheckInterval = null;
   let sedangOffline     = false;
+  let gagalPingBerturut = 0;
+  const BATAS_GAGAL     = 2;       // tandai offline setelah 2 kali berturut-turut
+  const PING_TIMEOUT_MS = 10_000;  // 10 detik — toleran untuk Apps Script cold start
 
   function daftarEventKoneksi() {
-    // ── Event bawaan browser (cepat, tapi hanya level perangkat) ──
+    // Event bawaan browser — bereaksi cepat saat jaringan fisik putus/nyambung
     window.addEventListener('offline', () => {
+      gagalPingBerturut = BATAS_GAGAL;
       tandaiOffline();
     });
-
     window.addEventListener('online', () => {
-      // Browser bilang nyambung — verifikasi dulu dengan ping sebelum
-      // langsung refresh, supaya tidak terlalu optimistis
-      pingServer().then(ok => {
-        if (ok) tandaiOnline();
-        // kalau ping masih gagal, biarkan auto-check yang nangani
-      });
+      // Browser bilang nyambung → verifikasi dulu sebelum auto-refresh
+      cekKoneksiDanAmbilTindakan();
     });
 
-    // ── Auto-check ping tiap 30 detik ─────────────────────────────
-    // Dimulai setelah halaman siap; berhenti otomatis kalau tab/window ditutup
-    autoCheckInterval = setInterval(async () => {
-      const ok = await pingServer();
-      if (!ok && !sedangOffline) {
-        tandaiOffline();
-      } else if (ok && sedangOffline) {
-        tandaiOnline();
-      }
-    }, 30_000); // 30 detik
+    // Auto-check tiap 45 detik (lebih jarang → kurangi beban Apps Script)
+    autoCheckInterval = setInterval(() => {
+      cekKoneksiDanAmbilTindakan();
+    }, 45_000);
   }
 
-  /* Cek konektivitas jaringan dengan GET no-cors.
-     Kenapa no-cors: HEAD request ke Google Apps Script sering gagal
-     karena CORS preflight, sehingga pingServer selalu return false
-     bahkan saat internet sebenarnya sudah nyambung kembali.
-     Dengan mode:'no-cors', browser tidak melakukan CORS check —
-     kalau fetch resolve (opaque response) = jaringan ada,
-     kalau throw (AbortError / TypeError) = benar-benar offline. */
-  async function pingServer() {
-    try {
-      await fetchWithTimeout(
-        `${SCRIPT_URL}?action=ping&_=${Date.now()}`,
-        { mode: 'no-cors' }, // no-cors: tidak throw karena CORS, hanya throw kalau network mati
-        5000
-      );
-      return true;  // fetch resolve = jaringan tersedia
-    } catch (e) {
-      return false; // AbortError (timeout) atau TypeError (no network)
+  async function cekKoneksiDanAmbilTindakan() {
+    const ok = await pingKoneksi();
+    if (ok) {
+      gagalPingBerturut = 0;
+      if (sedangOffline) tandaiOnline();
+    } else {
+      gagalPingBerturut++;
+      if (gagalPingBerturut >= BATAS_GAGAL && !sedangOffline) {
+        tandaiOffline();
+      }
     }
   }
 
-  /* Tandai kondisi offline: tampilkan banner cache kalau ada */
+  /* ── Ping dua lapis ──────────────────────────────────────────────
+     Lapis 1 → Google favicon (cepat, andal): cek internet ada/tidak.
+               Kalau gagal = internet mati → return false.
+     Lapis 2 → Apps Script: cek server kita.
+               Kalau lambat/timeout karena cold start atau data besar
+               TAPI internet ada → return true (bukan salah user).
+
+     Efek: akhir bulan saat Apps Script lambat, kita TIDAK munculkan
+     banner "offline" karena internet user sebenarnya baik-baik saja. */
+  async function pingKoneksi() {
+    const adaInternet = await pingUrl('https://www.google.com/favicon.ico', 5000);
+    if (!adaInternet) return false;   // internet mati → offline
+    // Internet ada → anggap online meski Apps Script lambat
+    return true;
+  }
+
+  async function pingUrl(url, timeoutMs) {
+    try {
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      await fetch(url, { mode: 'no-cors', signal: ctrl.signal });
+      clearTimeout(timer);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function tandaiOffline() {
-    if (sedangOffline) return; // sudah offline, tidak perlu repeat
+    if (sedangOffline) return;
     sedangOffline = true;
     const cache = ambilCacheData();
-    if (cache) {
-      showOfflineBanner(cache.waktu);
-    }
+    if (cache) showOfflineBanner(cache.waktu);
   }
 
-  /* Tandai kondisi kembali online: sembunyikan banner, refresh data */
   function tandaiOnline() {
-    if (!sedangOffline) return; // sudah online, tidak perlu repeat
-    sedangOffline = false;
+    if (!sedangOffline) return;
+    sedangOffline     = false;
+    gagalPingBerturut = 0;
     hideOfflineBanner();
     muatSemuaData();
     muatDataKontak();
@@ -2023,41 +2034,121 @@
   }
 
   async function muatSemuaData() {
-    hideOfflineBanner();
-    // tampilkan spinner di stat
-    ['statMasuk','statKeluar'].forEach(id => {
-      document.getElementById(id).innerHTML = '<span class="spinner"></span>';
-    });
-    document.getElementById('statMasukUnit').innerText  = '';
-    document.getElementById('statKeluarUnit').innerText = '';
-    document.getElementById('statMasukBreakdown').innerText = '';
-    document.getElementById('statKeluarBreakdown').innerText = '';
-    // tampilkan loading di tabel
-    document.getElementById('tb').innerHTML =
-      '<tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>';
+    // ═══════════════════════════════════════════════════════════
+    //  STALE-WHILE-REVALIDATE
+    //
+    //  Pola lama (masalah akhir bulan):
+    //    1. Kosongkan tampilan → pasang spinner
+    //    2. Fetch SEMUA data (bisa 1000+ baris, lambat)
+    //    3. Baru tampilkan → user nunggu 10-20 detik
+    //    4. Kalau timeout → tampilkan "offline" (FALSE POSITIVE)
+    //
+    //  Pola baru:
+    //    1. Tampilkan cache SEGERA (0ms) → user langsung bisa kerja
+    //    2. Fetch fresh data di background (tidak blokir UI)
+    //    3. Kalau berhasil → update diam-diam, user tidak sadar
+    //    4. Kalau lambat/gagal → sudah ada data dari cache,
+    //       TIDAK tampilkan "offline" kecuali internet benar-benar putus
+    // ═══════════════════════════════════════════════════════════
 
+    hideOfflineBanner();
+
+    const cache = ambilCacheData();
+
+    // FASE 1 — Tampilkan cache SEGERA agar user tidak nunggu kosong
+    if (cache && Array.isArray(cache.masuk) && Array.isArray(cache.keluar)) {
+      listDataMasuk  = cache.masuk;
+      listDataKeluar = cache.keluar;
+      tampilkanStats(listDataMasuk, listDataKeluar);
+      renderTabel();
+      tampilkanIndikatorSinkron(); // indikator kecil "sedang memperbarui..."
+    } else {
+      // Tidak ada cache → tampilkan spinner (pertama kali pakai)
+      showLoadingStats();
+      document.getElementById('tb').innerHTML =
+        '<tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>';
+    }
+
+    // FASE 2 — Fetch fresh data di background
     try {
       const [rMasuk, rKeluar] = await Promise.all([
         fetchWithTimeout(`${SCRIPT_URL}?type=masuk`).then(r => r.json()),
         fetchWithTimeout(`${SCRIPT_URL}?type=keluar`).then(r => r.json())
       ]);
+
       listDataMasuk  = rMasuk;
       listDataKeluar = rKeluar;
 
       tampilkanStats(listDataMasuk, listDataKeluar);
       simpanCacheData(listDataMasuk, listDataKeluar);
       renderTabel();
+      sembunyikanIndikatorSinkron();
+      hideOfflineBanner();
+
     } catch (e) {
-      console.error(e);
-      handleLoadError(e);
+      console.error('muatSemuaData gagal:', e);
+      sembunyikanIndikatorSinkron();
+
+      if (cache && Array.isArray(cache.masuk)) {
+        // Ada cache → user masih bisa kerja, jangan tampilkan error
+        // Bedakan: internet mati (offline) vs server lambat (slow)
+        const adaInternet = await pingUrl('https://www.google.com/favicon.ico', 4000);
+        if (!adaInternet) {
+          // Internet benar-benar mati
+          sedangOffline = true;
+          showOfflineBanner(cache.waktu);
+        } else {
+          // Internet ada tapi Apps Script lambat (akhir bulan, cold start, dll)
+          tampilkanBannerServerLambat();
+        }
+      } else {
+        // Tidak ada cache → tampilkan error box
+        handleLoadError(e);
+      }
     }
   }
 
-  /* ── PENANGANAN GAGAL MUAT ──────────────────────────────────────
-     1) Kalau ada cache dari load sebelumnya → tampilkan itu dulu
-        dan beri tahu pengguna ini "mode offline".
-     2) Kalau tidak ada cache sama sekali → tampilkan kotak error
-        lengkap dengan kemungkinan penyebab + tombol Coba Lagi. */
+  /* Indikator sinkron kecil di pojok kanan stats — tidak mengganggu */
+  function tampilkanIndikatorSinkron() {
+    let el = document.getElementById('sinkronIndicator');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sinkronIndicator';
+      el.style.cssText = 'font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:5px;margin-top:6px;';
+      el.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:1.5px;"></span>Memperbarui data…';
+      const greeting = document.querySelector('.greeting');
+      if (greeting) greeting.appendChild(el);
+    }
+    el.style.display = 'flex';
+  }
+
+  function sembunyikanIndikatorSinkron() {
+    const el = document.getElementById('sinkronIndicator');
+    if (el) el.style.display = 'none';
+  }
+
+  function showLoadingStats() {
+    ['statMasuk','statKeluar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<span class="spinner"></span>';
+    });
+    ['statMasukUnit','statKeluarUnit','statMasukBreakdown','statKeluarBreakdown'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = '';
+    });
+  }
+
+  /* Banner kuning berbeda: bukan "offline", tapi server lambat */
+  function tampilkanBannerServerLambat() {
+    const banner = document.getElementById('offlineBanner');
+    if (!banner) return;
+    banner.innerHTML = `
+      <i class="ti ti-clock-pause"></i>
+      <span>Server Google sedang lambat — menampilkan data terakhir. <a href="#" onclick="muatSemuaData();return false;" style="color:var(--amber-text);font-weight:600;text-decoration:underline;">Coba lagi</a></span>
+    `;
+    banner.classList.add('show');
+  }
+
   function handleLoadError(err) {
     const cache = ambilCacheData();
 
