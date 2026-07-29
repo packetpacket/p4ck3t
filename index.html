@@ -1758,14 +1758,21 @@
     fd.append('pengirim',       pengirim);
     fd.append('keterangan',     keterangan);
 
-    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
-      .then(() => {
+    fetch(SCRIPT_URL, { method: 'POST', body: fd })
+      .then(res => res.text())
+      .then(result => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan ke Dokumen';
+
+        if (result && result.toString().trim().indexOf('Error') === 0) {
+          alert(result); // mis. nomor resi/dokumen duplikat — biarkan form tetap terbuka biar bisa dikoreksi
+          return;
+        }
+
         hideForm();
         // muatDataDokumen() me-refresh tabel Dokumen di halaman Surat & Dokumen
         // (nama fungsi yang benar — bukan muatDokumen)
         if (typeof muatDataDokumen === 'function') muatDataDokumen();
-        btn.disabled  = false;
-        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan ke Dokumen';
       })
       .catch(err => {
         alert('Gagal menyimpan dokumen: ' + err);
@@ -2573,14 +2580,21 @@
       fd.append('row', rowInput.value);
     }
 
-    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
-      .then(() => {
+    fetch(SCRIPT_URL, { method: 'POST', body: fd })
+      .then(res => res.text())
+      .then(result => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
+
+        if (result && result.toString().trim().indexOf('Error') === 0) {
+          alert(result); // mis. nomor resi duplikat — biarkan form tetap terbuka biar bisa dikoreksi
+          return;
+        }
+
         rowInput.value = '';
         hideForm();
         muatSemuaData();
         if (t === 'keluar') muatDataKontak();
-        btn.disabled  = false;
-        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
       })
       .catch(e => {
         alert('Gagal menyimpan: ' + e);
@@ -3358,13 +3372,20 @@
       fd.append('row', rowInput.value);
     }
 
-    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
-      .then(() => {
+    fetch(SCRIPT_URL, { method: 'POST', body: fd })
+      .then(res => res.text())
+      .then(result => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
+
+        if (result && result.toString().trim().indexOf('Error') === 0) {
+          alert(result); // mis. nomor resi/dokumen duplikat — biarkan form tetap terbuka biar bisa dikoreksi
+          return;
+        }
+
         rowInput.value = '';
         hideFormDokumen();
         muatDataDokumen();
-        btn.disabled  = false;
-        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
       })
       .catch(e => {
         alert('Gagal menyimpan: ' + e);
