@@ -568,6 +568,10 @@
     }
     .badge.masuk  { background: var(--accent-bg); color: var(--accent-text); }
     .badge.keluar { background: var(--green-bg);  color: var(--green-text);  }
+    .badge.red    { background: var(--red-bg);    color: var(--red-text);    }
+    .badge.amber  { background: var(--amber-bg);  color: var(--amber-text);  }
+    .badge.blue   { background: var(--accent-bg); color: var(--accent-text); }
+    .badge.green  { background: var(--green-bg);  color: var(--green-text);  }
 
     .tbl-btn {
       width: 28px; height: 28px;
@@ -1018,6 +1022,9 @@
       <div class="nav-item" id="nav-dokumen" onclick="setPage('dokumen')">
         <i class="ti ti-mail"></i>Dokumen
       </div>
+      <div class="nav-item" id="nav-log" onclick="setPage('log')">
+        <i class="ti ti-history"></i>Log aktivitas
+      </div>
     </nav>
 
     <!-- TRAKTEER DONASI -->
@@ -1298,6 +1305,70 @@
       </div>
 
       </div><!-- /#page-dokumen -->
+
+      <!-- ============================================================
+           HALAMAN: LOG AKTIVITAS
+      ============================================================ -->
+      <div id="page-log" style="display:none;">
+
+      <div class="greeting">
+        <h1>Log Aktivitas 🕓</h1>
+        <p>Riwayat siapa menambah, mengedit, atau menghapus data — untuk transparansi & audit</p>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Riwayat aktivitas</div>
+        <div class="section-actions">
+          <button class="btn btn-ghost" onclick="muatDataLog()" title="Muat ulang">
+            <i class="ti ti-refresh"></i><span>Muat ulang</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="riwayat-wrapper">
+        <div class="riwayat-top">
+          <div class="filter-toggle-row">
+            <div class="search-field">
+              <i class="ti ti-search"></i>
+              <input type="text" id="inputCariLog"
+                     placeholder="Cari email, resi, atau detail aktivitas…"
+                     oninput="renderTabelLog()">
+            </div>
+            <div class="sort-select-wrap">
+              <i class="ti ti-filter"></i>
+              <select class="sort-select" id="filterAksiLog" onchange="renderTabelLog()" title="Filter aksi">
+                <option value="">Semua aksi</option>
+                <option value="Tambah">Tambah</option>
+                <option value="Edit">Edit</option>
+                <option value="Hapus">Hapus</option>
+                <option value="Hapus Massal">Hapus Massal</option>
+                <option value="Update Status">Update Status</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table" id="tabelLog">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Email</th>
+                <th>Aksi</th>
+                <th>Jenis Data</th>
+                <th>Detail</th>
+                <th>Baris</th>
+              </tr>
+            </thead>
+            <tbody id="tbLog">
+              <tr class="state-row"><td colspan="6"><span class="spinner"></span>Memuat data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-info" id="infoJumlahLog" style="margin-top:8px;font-size:13px;color:var(--text-muted,#888);"></div>
+      </div>
+
+      </div><!-- /#page-log -->
 
     </main>
   </div>
@@ -1694,8 +1765,9 @@
      D Tanggal dan Jam, E Status, F Keterangan, G Pengambil, H No HP.
      Sama seperti listDataMasuk/Keluar, baris index 0 = header,
      nomor baris sheet sebenarnya = index array + 1.                */
-  let halamanAktif         = 'dashboard'; // 'dashboard' | 'dokumen'
+  let halamanAktif         = 'dashboard'; // 'dashboard' | 'dokumen' | 'log'
   let listDataDokumen      = [];
+  let listDataLog          = [];
   let filterModeDokumen    = 'semua';     // semua | belum | diambil
   let currentPageDokumen   = 1;
   let allFilteredRowsDokumen = [];
@@ -1753,19 +1825,27 @@
 
     const fd = new FormData();
     fd.append('formType',      'dokumen');
+    fd.append('email',         userEmailAktif);
     fd.append('nomorResi',      resi);
     fd.append('pemilikAlamat',  pemilik);
     fd.append('pengirim',       pengirim);
     fd.append('keterangan',     keterangan);
 
-    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
-      .then(() => {
+    fetch(SCRIPT_URL, { method: 'POST', body: fd })
+      .then(res => res.text())
+      .then(result => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan ke Dokumen';
+
+        if (result && result.toString().trim().indexOf('Error') === 0) {
+          alert(result); // mis. nomor resi/dokumen duplikat — biarkan form tetap terbuka biar bisa dikoreksi
+          return;
+        }
+
         hideForm();
         // muatDataDokumen() me-refresh tabel Dokumen di halaman Surat & Dokumen
         // (nama fungsi yang benar — bukan muatDokumen)
         if (typeof muatDataDokumen === 'function') muatDataDokumen();
-        btn.disabled  = false;
-        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan ke Dokumen';
       })
       .catch(err => {
         alert('Gagal menyimpan dokumen: ' + err);
@@ -1825,6 +1905,7 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('main-app').style.display     = 'block';
     const email = localStorage.getItem('userEmailDev');
+    userEmailAktif = email; // penting: dipakai utk tag "siapa" di setiap aksi (log aktivitas)
     document.getElementById('user-display').innerText   = email;
     document.getElementById('greeting-name').innerText  = email.split('@')[0];
     document.getElementById('sidebarAvatar').innerText  = email.charAt(0).toUpperCase();
@@ -2433,25 +2514,33 @@
      di sidebar & bottom nav mobile.                                */
   function setPage(page) {
     halamanAktif = page;
-    const isDokumen = page === 'dokumen';
 
-    document.getElementById('page-dashboard').style.display = isDokumen ? 'none' : 'block';
-    document.getElementById('page-dokumen').style.display   = isDokumen ? 'block' : 'none';
+    document.getElementById('page-dashboard').style.display = page === 'dashboard' ? 'block' : 'none';
+    document.getElementById('page-dokumen').style.display   = page === 'dokumen'   ? 'block' : 'none';
+    document.getElementById('page-log').style.display       = page === 'log'       ? 'block' : 'none';
 
     // Default highlight sidebar; untuk nav-masuk/nav-keluar pemanggil
     // akan meng-override lewat setNavActive() setelah ini (lihat onclick di HTML).
-    setNavActive(isDokumen ? 'nav-dokumen' : 'nav-dashboard');
+    var navId = page === 'dokumen' ? 'nav-dokumen' : page === 'log' ? 'nav-log' : 'nav-dashboard';
+    setNavActive(navId);
     updateBottomNavActive(page, filterMode);
 
     // Placeholder search topbar biar kontekstual sesuai halaman
+    // (halaman 'log' punya search field sendiri, topbar disembunyikan)
+    const topbarWrap = document.getElementById('inputCariTopbar')
+      ? document.getElementById('inputCariTopbar').closest('.search-field')
+      : null;
+    if (topbarWrap) topbarWrap.style.display = page === 'log' ? 'none' : '';
+
     const topbarSearch = document.getElementById('inputCariTopbar');
     if (topbarSearch) {
-      topbarSearch.placeholder = isDokumen
+      topbarSearch.placeholder = page === 'dokumen'
         ? 'Cari resi, pemilik, atau pengirim…'
         : 'Cari paket, resi, atau pemilik…';
     }
 
-    if (isDokumen) muatDataDokumen();
+    if (page === 'dokumen') muatDataDokumen();
+    if (page === 'log')     muatDataLog();
   }
 
   /* Sinkronkan tombol aktif di bottom nav (mobile) sesuai halaman + filter */
@@ -2533,7 +2622,7 @@
 
   function hapusData(jenis, num) {
     if (!confirm('Hapus data ini?')) return;
-    fetch(`${SCRIPT_URL}?action=delete&type=${jenis}&row=${num}`, { mode: 'no-cors' })
+    fetch(`${SCRIPT_URL}?action=delete&type=${jenis}&row=${num}&email=${encodeURIComponent(userEmailAktif)}`, { mode: 'no-cors' })
       .then(() => muatSemuaData());
   }
 
@@ -2545,7 +2634,7 @@
     btn.disabled = true;
     document.getElementById('hapusLabel').innerText = 'Menghapus…';
     try {
-      const res    = await fetch(`${SCRIPT_URL}?action=deleteAll&targetType=${f}&pin=${pin}`, { method: 'POST' });
+      const res    = await fetch(`${SCRIPT_URL}?action=deleteAll&targetType=${f}&pin=${pin}&email=${encodeURIComponent(userEmailAktif)}`, { method: 'POST' });
       const result = await res.text();
       alert(result);
       muatSemuaData();
@@ -2568,19 +2657,27 @@
 
     const fd = new FormData(f);
     fd.append('formType', t);
+    fd.append('email', userEmailAktif);
     if (rowInput.value) {
       fd.append('action', 'edit');
       fd.append('row', rowInput.value);
     }
 
-    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
-      .then(() => {
+    fetch(SCRIPT_URL, { method: 'POST', body: fd })
+      .then(res => res.text())
+      .then(result => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
+
+        if (result && result.toString().trim().indexOf('Error') === 0) {
+          alert(result); // mis. nomor resi duplikat — biarkan form tetap terbuka biar bisa dikoreksi
+          return;
+        }
+
         rowInput.value = '';
         hideForm();
         muatSemuaData();
         if (t === 'keluar') muatDataKontak();
-        btn.disabled  = false;
-        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
       })
       .catch(e => {
         alert('Gagal menyimpan: ' + e);
@@ -2997,6 +3094,81 @@
     }
   }
 
+  /* ── HALAMAN LOG AKTIVITAS ───────────────────────────────────── */
+  async function muatDataLog() {
+    document.getElementById('tbLog').innerHTML =
+      '<tr class="state-row"><td colspan="6"><span class="spinner"></span>Memuat data…</td></tr>';
+
+    try {
+      const res  = await fetchWithTimeout(`${SCRIPT_URL}?action=getLog&limit=300`);
+      const data = await res.json();
+      // data[0] = header, sisanya baris log; urutan sheet = lama→baru,
+      // dibalik di sini supaya aktivitas TERBARU tampil di paling atas.
+      listDataLog = Array.isArray(data) && data.length > 1
+        ? data.slice(1).reverse()
+        : [];
+      renderTabelLog();
+    } catch (e) {
+      console.error(e);
+      document.getElementById('tbLog').innerHTML = `
+        <tr class="state-row-error">
+          <td colspan="6">
+            <div class="error-box">
+              <div class="error-title"><i class="ti ti-alert-triangle"></i>Gagal memuat log aktivitas</div>
+              <p class="error-desc">Periksa koneksi internet, lalu coba lagi.</p>
+              <button class="btn btn-primary" onclick="muatDataLog()">
+                <i class="ti ti-refresh"></i>Coba Lagi
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    }
+  }
+
+  function escHtmlLog(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function renderTabelLog() {
+    const kw   = (document.getElementById('inputCariLog').value || '').toLowerCase().trim();
+    const aksi = document.getElementById('filterAksiLog').value;
+
+    const rows = listDataLog.filter(row => {
+      if (!row) return false;
+      const [waktu, email, aksiRow, jenis, detail, baris] = row;
+      if (aksi && aksiRow !== aksi) return false;
+      if (!kw) return true;
+      const gabungan = `${email} ${jenis} ${detail}`.toLowerCase();
+      return gabungan.includes(kw);
+    });
+
+    const tbody = document.getElementById('tbLog');
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr class="state-row"><td colspan="6">Tidak ada aktivitas yang cocok.</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map(row => {
+        const [waktu, email, aksiRow, jenis, detail, baris] = row;
+        const badgeClass = aksiRow === 'Tambah' ? 'green'
+                          : aksiRow === 'Edit' ? 'blue'
+                          : (aksiRow === 'Hapus' || aksiRow === 'Hapus Massal') ? 'red'
+                          : 'amber';
+        return `
+          <tr>
+            <td>${escHtmlLog(waktu)}</td>
+            <td>${escHtmlLog(email)}</td>
+            <td><span class="badge ${badgeClass}">${escHtmlLog(aksiRow)}</span></td>
+            <td>${escHtmlLog(jenis)}</td>
+            <td>${escHtmlLog(detail)}</td>
+            <td>${escHtmlLog(baris)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('infoJumlahLog').innerText =
+      `Menampilkan ${rows.length} dari ${listDataLog.length} aktivitas terbaru (maks. 300 tersimpan di sini).`;
+  }
+
   function tampilkanStatsDokumen(data) {
     let total = 0, belum = 0, diambil = 0;
     for (let i = 1; i < data.length; i++) {
@@ -3353,18 +3525,26 @@
 
     const fd = new FormData(f);
     fd.append('formType', 'dokumen');
+    fd.append('email', userEmailAktif);
     if (rowInput.value) {
       fd.append('action', 'edit');
       fd.append('row', rowInput.value);
     }
 
-    fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' })
-      .then(() => {
+    fetch(SCRIPT_URL, { method: 'POST', body: fd })
+      .then(res => res.text())
+      .then(result => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
+
+        if (result && result.toString().trim().indexOf('Error') === 0) {
+          alert(result); // mis. nomor resi/dokumen duplikat — biarkan form tetap terbuka biar bisa dikoreksi
+          return;
+        }
+
         rowInput.value = '';
         hideFormDokumen();
         muatDataDokumen();
-        btn.disabled  = false;
-        btn.innerHTML = '<i class="ti ti-device-floppy"></i>Simpan';
       })
       .catch(e => {
         alert('Gagal menyimpan: ' + e);
@@ -3375,7 +3555,7 @@
 
   function hapusDataDokumen(num) {
     if (!confirm('Hapus data dokumen ini?')) return;
-    fetch(`${SCRIPT_URL}?action=delete&type=dokumen&row=${num}`, { mode: 'no-cors' })
+    fetch(`${SCRIPT_URL}?action=delete&type=dokumen&row=${num}&email=${encodeURIComponent(userEmailAktif)}`, { mode: 'no-cors' })
       .then(() => muatDataDokumen());
   }
 
@@ -3454,6 +3634,7 @@
     fd.append('status', statusBaru);
     fd.append('pengambil', pengambil);
     fd.append('noHp', noHp);
+    fd.append('email', userEmailAktif);
 
     try {
       await fetch(SCRIPT_URL, { method: 'POST', body: fd, mode: 'no-cors' });
