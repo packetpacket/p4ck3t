@@ -1961,7 +1961,13 @@
     // ── Auto-check ping tiap 30 detik ─────────────────────────────
     // Dimulai setelah halaman siap; berhenti otomatis kalau tab/window ditutup
     autoCheckInterval = setInterval(async () => {
-      const ok = await pingServer();
+      let ok = await pingServer();
+      if (!ok) {
+        // Jangan langsung dicap offline dari 1x gagal — Apps Script kadang
+        // "cold start" beberapa detik. Coba sekali lagi dulu sebelum yakin.
+        await new Promise(r => setTimeout(r, 2000));
+        ok = await pingServer();
+      }
       if (!ok && !sedangOffline) {
         tandaiOffline();
       } else if (ok && sedangOffline) {
@@ -1982,7 +1988,7 @@
       await fetchWithTimeout(
         `${SCRIPT_URL}?action=ping&_=${Date.now()}`,
         { mode: 'no-cors' }, // no-cors: tidak throw karena CORS, hanya throw kalau network mati
-        5000
+        8000
       );
       return true;  // fetch resolve = jaringan tersedia
     } catch (e) {
