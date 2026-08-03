@@ -2138,16 +2138,12 @@
       '<tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>';
 
     try {
-      const [rMasuk, rKeluar, summary] = await Promise.all([
-        fetchWithTimeout(`${SCRIPT_URL}?type=masuk&limit=300`).then(r => r.json()),
-        fetchWithTimeout(`${SCRIPT_URL}?type=keluar&limit=300`).then(r => r.json()),
-        fetchWithTimeout(`${SCRIPT_URL}?action=getSummary`).then(r => r.json())
-      ]);
-      listDataMasuk  = rMasuk;
-      listDataKeluar = rKeluar;
+      const dash = await fetchWithTimeout(`${SCRIPT_URL}?action=getDashboard&limit=300`).then(r => r.json());
+      listDataMasuk  = dash.masuk  || [];
+      listDataKeluar = dash.keluar || [];
 
-      tampilkanStats(summary); // total sebenarnya (dihitung server dari SEMUA baris)
-      simpanCacheData(listDataMasuk, listDataKeluar, summary);
+      tampilkanStats(dash.summary || {}); // total sebenarnya (dihitung server dari SEMUA baris)
+      simpanCacheData(listDataMasuk, listDataKeluar, dash.summary);
       renderTabel();
     } catch (e) {
       console.error(e);
@@ -3091,14 +3087,9 @@
     });
 
     try {
-      const [res, resSummary] = await Promise.all([
-        fetchWithTimeout(`${SCRIPT_URL}?type=dokumen&limit=300`),
-        fetchWithTimeout(`${SCRIPT_URL}?action=getSummary`)
-      ]);
-      const data    = await res.json();
-      const summary = await resSummary.json();
-      listDataDokumen = Array.isArray(data) ? data : [];
-      tampilkanStatsDokumen(summary);
+      const dash = await fetchWithTimeout(`${SCRIPT_URL}?action=getDashboard&limit=300`).then(r => r.json());
+      listDataDokumen = Array.isArray(dash.dokumen) ? dash.dokumen : [];
+      tampilkanStatsDokumen(dash.summary || {});
       renderTabelDokumen();
     } catch (e) {
       console.error(e);
