@@ -1918,7 +1918,8 @@
       if (cache && Array.isArray(cache.masuk) && Array.isArray(cache.keluar)) {
         listDataMasuk  = cache.masuk;
         listDataKeluar = cache.keluar;
-        tampilkanStats(listDataMasuk, listDataKeluar);
+        const summary  = cache.summary || hitungSummaryDariArray(listDataMasuk, listDataKeluar);
+        tampilkanStats(summary);
         renderTabel();
         showOfflineBanner(cache.waktu);
         return; // skip fetch; auto-check berkala yang akan nanti refresh saat online
@@ -2032,12 +2033,13 @@
      Setiap kali data berhasil dimuat, disimpan sebagai cadangan.
      Kalau nanti gagal memuat (internet jelek), data cadangan ini
      yang ditampilkan supaya halaman tidak kosong. */
-  function simpanCacheData(dataMasuk, dataKeluar) {
+  function simpanCacheData(dataMasuk, dataKeluar, summary) {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
-        masuk:  dataMasuk,
-        keluar: dataKeluar,
-        waktu:  Date.now()
+        masuk:   dataMasuk,
+        keluar:  dataKeluar,
+        summary: summary || null,
+        waktu:   Date.now()
       }));
     } catch (e) { /* storage penuh atau diblokir browser, abaikan saja */ }
   }
@@ -2068,39 +2070,51 @@
   /* ── HITUNG & TAMPILKAN RINGKASAN ──────────────────────────────
      Dipakai baik untuk data hasil fetch langsung, maupun data
      cadangan (cache) saat mode offline. */
-  function tampilkanStats(dataMasuk, dataKeluar) {
-    // Paket masuk = total kuantitas jumlahMasuk dari setiap baris data masuk,
-    // bukan sekadar jumlah baris/transaksi. Kolom index 2 = jumlahMasuk.
-    let jmlMasuk = 0;
-    for (let i = 1; i < dataMasuk.length; i++) {
-      const row = dataMasuk[i];
-      if (!row) continue;
-      const kode = String(row[0] || '').trim();
-      const nama = String(row[1] || '').trim();
-      if (!kode && !nama) continue; // skip baris kosong
-      jmlMasuk += parseInt(row[2], 10) || 1; // default 1 jika kolom kosong
-    }
-
-    // Paket keluar = jumlah paket + jumlah makanan (FnB) dari setiap baris data keluar,
-    // bukan sekadar jumlah baris/transaksi. Kolom index 4 = jumlahFnb, index 5 = jumlahPaket.
-    let totalPaketKeluar = 0;
-    let totalFnbKeluar   = 0;
-    for (let i = 1; i < dataKeluar.length; i++) {
-      const row = dataKeluar[i];
-      if (!row) continue;
-      totalFnbKeluar   += parseInt(row[4], 10) || 0;
-      totalPaketKeluar += parseInt(row[5], 10) || 0;
-    }
-    const jmlKeluar = totalPaketKeluar + totalFnbKeluar;
+  function tampilkanStats(summary) {
+    // summary datang dari endpoint ringan ?action=getSummary — dihitung
+    // di server dari SELURUH baris sheet, jadi tetap akurat walau tabel
+    // yang ditampilkan di halaman cuma nampilin N transaksi terakhir.
+    const jmlMasuk         = summary.masuk          || 0;
+    const transaksiMasuk   = summary.transaksiMasuk || 0;
+    const totalFnbKeluar   = summary.fnb            || 0;
+    const totalPaketKeluar = summary.paketKeluar    || 0;
+    const jmlKeluar        = totalPaketKeluar + totalFnbKeluar;
 
     document.getElementById('statMasuk').innerText   = jmlMasuk;
     document.getElementById('statKeluar').innerText  = jmlKeluar;
     document.getElementById('statMasukUnit').innerText  = ' data';
     document.getElementById('statKeluarUnit').innerText = ' data';
     document.getElementById('statMasukBreakdown').innerText =
-      `dari ${Math.max(0, dataMasuk.length - 1)} transaksi`;
+      `dari ${transaksiMasuk} transaksi`;
     document.getElementById('statKeluarBreakdown').innerText =
       `${totalPaketKeluar} paket • ${totalFnbKeluar} makanan`;
+  }
+
+  /**
+   * Fallback KHUSUS dipakai saat mode offline & cache lama (sebelum update
+   * ini) belum punya field "summary" tersimpan. Menghitung total dari data
+   * yang ke-cache saja (mungkin tidak 100% akurat kalau cache-nya sudah
+   * dibatasi N baris terakhir, tapi lebih baik daripada kosong).
+   */
+  function hitungSummaryDariArray(dataMasuk, dataKeluar) {
+    let jmlMasuk = 0, transaksiMasuk = 0;
+    for (let i = 1; i < dataMasuk.length; i++) {
+      const row = dataMasuk[i];
+      if (!row) continue;
+      const kode = String(row[0] || '').trim();
+      const nama = String(row[1] || '').trim();
+      if (!kode && !nama) continue;
+      jmlMasuk += parseInt(row[2], 10) || 1;
+      transaksiMasuk++;
+    }
+    let totalFnbKeluar = 0, totalPaketKeluar = 0;
+    for (let i = 1; i < dataKeluar.length; i++) {
+      const row = dataKeluar[i];
+      if (!row) continue;
+      totalFnbKeluar   += parseInt(row[4], 10) || 0;
+      totalPaketKeluar += parseInt(row[5], 10) || 0;
+    }
+    return { masuk: jmlMasuk, transaksiMasuk, fnb: totalFnbKeluar, paketKeluar: totalPaketKeluar };
   }
 
   /* ── DATA LOADING ───────────────────────────────────────────── */
@@ -2124,15 +2138,16 @@
       '<tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>';
 
     try {
-      const [rMasuk, rKeluar] = await Promise.all([
-        fetchWithTimeout(`${SCRIPT_URL}?type=masuk`).then(r => r.json()),
-        fetchWithTimeout(`${SCRIPT_URL}?type=keluar`).then(r => r.json())
+      const [rMasuk, rKeluar, summary] = await Promise.all([
+        fetchWithTimeout(`${SCRIPT_URL}?type=masuk&limit=300`).then(r => r.json()),
+        fetchWithTimeout(`${SCRIPT_URL}?type=keluar&limit=300`).then(r => r.json()),
+        fetchWithTimeout(`${SCRIPT_URL}?action=getSummary`).then(r => r.json())
       ]);
       listDataMasuk  = rMasuk;
       listDataKeluar = rKeluar;
 
-      tampilkanStats(listDataMasuk, listDataKeluar);
-      simpanCacheData(listDataMasuk, listDataKeluar);
+      tampilkanStats(summary); // total sebenarnya (dihitung server dari SEMUA baris)
+      simpanCacheData(listDataMasuk, listDataKeluar, summary);
       renderTabel();
     } catch (e) {
       console.error(e);
@@ -2151,7 +2166,8 @@
     if (cache && Array.isArray(cache.masuk) && Array.isArray(cache.keluar)) {
       listDataMasuk  = cache.masuk;
       listDataKeluar = cache.keluar;
-      tampilkanStats(listDataMasuk, listDataKeluar);
+      const summary  = cache.summary || hitungSummaryDariArray(listDataMasuk, listDataKeluar);
+      tampilkanStats(summary);
       renderTabel();
       showOfflineBanner(cache.waktu);
     } else {
@@ -3075,10 +3091,14 @@
     });
 
     try {
-      const res  = await fetchWithTimeout(`${SCRIPT_URL}?type=dokumen`);
-      const data = await res.json();
+      const [res, resSummary] = await Promise.all([
+        fetchWithTimeout(`${SCRIPT_URL}?type=dokumen&limit=300`),
+        fetchWithTimeout(`${SCRIPT_URL}?action=getSummary`)
+      ]);
+      const data    = await res.json();
+      const summary = await resSummary.json();
       listDataDokumen = Array.isArray(data) ? data : [];
-      tampilkanStatsDokumen(listDataDokumen);
+      tampilkanStatsDokumen(summary);
       renderTabelDokumen();
     } catch (e) {
       console.error(e);
@@ -3175,21 +3195,10 @@
       `Menampilkan ${rows.length} dari ${listDataLog.length} aktivitas terbaru (maks. 300 tersimpan di sini).`;
   }
 
-  function tampilkanStatsDokumen(data) {
-    let total = 0, belum = 0, diambil = 0;
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      if (!row) continue;
-      const resi    = String(row[0] || '').trim();
-      const pemilik = String(row[1] || '').trim();
-      if (!resi && !pemilik) continue; // skip baris kosong
-      total++;
-      const status = String(row[4] || '').trim().toLowerCase();
-      if (status === 'diambil') diambil++; else belum++;
-    }
-    document.getElementById('dokStatTotal').innerText   = total;
-    document.getElementById('dokStatBelum').innerText   = belum;
-    document.getElementById('dokStatDiambil').innerText = diambil;
+  function tampilkanStatsDokumen(summary) {
+    document.getElementById('dokStatTotal').innerText   = summary.dokTotal   || 0;
+    document.getElementById('dokStatBelum').innerText   = summary.dokBelum  || 0;
+    document.getElementById('dokStatDiambil').innerText = summary.dokDiambil|| 0;
   }
 
   /* ── FORMAT & HELPER ────────────────────────────────────────── */
