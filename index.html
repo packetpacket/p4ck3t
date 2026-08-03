@@ -1963,9 +1963,11 @@
     // Dimulai setelah halaman siap; berhenti otomatis kalau tab/window ditutup
     autoCheckInterval = setInterval(async () => {
       let ok = await pingServer();
-      if (!ok) {
-        // Jangan langsung dicap offline dari 1x gagal — Apps Script kadang
-        // "cold start" beberapa detik. Coba sekali lagi dulu sebelum yakin.
+      // Jangan langsung dicap offline dari 1x gagal — koneksi kadang cuma
+      // putus sebentar (2-4 detik) terus nyambung lagi sendiri, atau Apps
+      // Script lagi cold-start. Coba total 3x (1 awal + 2 retry) dengan
+      // jeda 2 detik sebelum bener-bener yakin offline.
+      for (let percobaan = 0; !ok && percobaan < 2; percobaan++) {
         await new Promise(r => setTimeout(r, 2000));
         ok = await pingServer();
       }
@@ -2123,6 +2125,20 @@
     else muatSemuaData();
   }
 
+  /**
+   * Ambil data dashboard dengan retry — koneksi yang sempat putus sebentar
+   * (2-4 detik lalu nyambung lagi) jangan langsung bikin dianggap "offline"
+   * dan jatuh ke data cache lama. Coba total 2x sebelum benar-benar menyerah.
+   */
+  async function ambilDashboardDenganRetry() {
+    try {
+      return await fetchWithTimeout(`${SCRIPT_URL}?action=getDashboard&limit=300`).then(r => r.json());
+    } catch (e) {
+      await new Promise(r => setTimeout(r, 1500));
+      return await fetchWithTimeout(`${SCRIPT_URL}?action=getDashboard&limit=300`).then(r => r.json());
+    }
+  }
+
   async function muatSemuaData() {
     hideOfflineBanner();
     // tampilkan spinner di stat
@@ -2138,7 +2154,7 @@
       '<tr class="state-row"><td colspan="4"><span class="spinner"></span>Memuat data…</td></tr>';
 
     try {
-      const dash = await fetchWithTimeout(`${SCRIPT_URL}?action=getDashboard&limit=300`).then(r => r.json());
+      const dash = await ambilDashboardDenganRetry();
       listDataMasuk  = dash.masuk  || [];
       listDataKeluar = dash.keluar || [];
 
@@ -3087,7 +3103,7 @@
     });
 
     try {
-      const dash = await fetchWithTimeout(`${SCRIPT_URL}?action=getDashboard&limit=300`).then(r => r.json());
+      const dash = await ambilDashboardDenganRetry();
       listDataDokumen = Array.isArray(dash.dokumen) ? dash.dokumen : [];
       tampilkanStatsDokumen(dash.summary || {});
       renderTabelDokumen();
