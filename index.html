@@ -1746,7 +1746,7 @@
 <script>
   /* ── CONFIG ─────────────────────────────────────────────────── */
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnGLtkXKJvk5OgBlf1jatir_8GGRkbB4jwTM1PgztoGieZekILQG-DaMH3HsIvSy3ArQ/exec";
-  const TIMEOUT_MS = 12000; // 12 detik — cukup toleran untuk koneksi 4G yang lambat
+  const TIMEOUT_MS = 20000; // 20 detik — dinaikkan dari 12 detik karena Apps Script/Sheets kadang lelet, bukan cuma soal koneksi 4G
   const CACHE_KEY  = 'bolangPaketCache';
 
   /* ── STATE ──────────────────────────────────────────────────── */
@@ -1991,7 +1991,7 @@
       await fetchWithTimeout(
         `${SCRIPT_URL}?action=ping&_=${Date.now()}`,
         { mode: 'no-cors' }, // no-cors: tidak throw karena CORS, hanya throw kalau network mati
-        8000
+        12000
       );
       return true;  // fetch resolve = jaringan tersedia
     } catch (e) {
@@ -3132,13 +3132,31 @@
   }
 
   /* ── HALAMAN LOG AKTIVITAS ───────────────────────────────────── */
+  /**
+   * Ambil data Log Aktivitas dengan retry — sama alasannya dengan
+   * ambilDashboardDenganRetry: server kadang lelet, jangan langsung nyerah.
+   */
+  async function ambilLogDenganRetry() {
+    try {
+      const res = await fetchWithTimeout(`${SCRIPT_URL}?action=getLog&limit=300`);
+      const data = await res.json();
+      if (data && data.error) throw new Error(data.message || 'Server error');
+      return data;
+    } catch (e) {
+      await new Promise(r => setTimeout(r, 1500));
+      const res = await fetchWithTimeout(`${SCRIPT_URL}?action=getLog&limit=300`);
+      const data = await res.json();
+      if (data && data.error) throw new Error(data.message || 'Server error');
+      return data;
+    }
+  }
+
   async function muatDataLog() {
     document.getElementById('tbLog').innerHTML =
       '<tr class="state-row"><td colspan="6"><span class="spinner"></span>Memuat data…</td></tr>';
 
     try {
-      const res  = await fetchWithTimeout(`${SCRIPT_URL}?action=getLog&limit=300`);
-      const data = await res.json();
+      const data = await ambilLogDenganRetry();
       // data[0] = header, sisanya baris log; urutan sheet = lama→baru,
       // dibalik di sini supaya aktivitas TERBARU tampil di paling atas.
       listDataLog = Array.isArray(data) && data.length > 1
